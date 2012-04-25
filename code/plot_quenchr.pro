@@ -16,10 +16,11 @@ pro plot_quenchr, loz=loz,hiz=hiz,lom=lom
 
 ; like plot_quenchz but with radial bins at 0.2<z<0.8, 13.6<M<14.
 
-acs=mrdfits("/Users/alexie/Work/GroupCatalogs/lensing15_20110209.fits",1)
-group=mrdfits("/Users/alexie/Work/GroupCatalogs/cosmos_xgroups_20110209.fits",1)
+acs=mrdfits("~/data/cosmos/code/lensing18_20110914.fits",1)
+group=mrdfits("~/data/cosmos/code/group5_20110914.fits",1)
 ;quench_cat=mrdfits("/Users/mgeorge/data/cosmos/catalogs/quenched_cat_nocuts.fits",1)
 
+plotDir="~/data/cosmos/transformers/plots/"
 
 smbins=[9.4,9.8,10.3,10.7,11.5]
 ;rbins=[0.0,0.25,0.5,1.0]
@@ -325,7 +326,7 @@ smColors=[!darkred,!darkgreen,!purple,!orange]
 fieldColor=!black
 
 ; QUENCHING PLOT
-device,filename='quenchr'+plot_suffix+'.eps',/color,/helvetica,xsize=10,ysize=4,/inches,/encapsul
+device,filename=plotDir+'quenchr'+plot_suffix+'.eps',/color,/helvetica,xsize=10,ysize=4,/inches,/encapsul
 multiplot,/default
 multiplot,[nsmbins,1],mxtitle=textoidl('Group-centric Distance (R/R_{200c})'),mxtitsize=1.4,mxtitoffset=0.5,mytitle='Red Fraction',mytitsize=1.4,mytitoffset=0,/rowmajor
 
@@ -367,7 +368,7 @@ device,/close
 
 
 ; MORPHOLOGY PLOT
-device,filename='morphr'+plot_suffix+'.eps',/color,/helvetica,xsize=10,ysize=4,/inches,/encapsul
+device,filename=plotDir+'morphr'+plot_suffix+'.eps',/color,/helvetica,xsize=10,ysize=4,/inches,/encapsul
 multiplot,/default
 multiplot,[nsmbins,1],mxtitle=textoidl('Group-centric Distance (R/R_{200c})'),mxtitsize=1.4,mxtitoffset=0.5,mytitle='Early Type Fraction',mytitsize=1.4,mytitoffset=0,/rowmajor
 
