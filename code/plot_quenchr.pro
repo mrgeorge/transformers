@@ -12,7 +12,7 @@ pro bootstrap, arr, average, sigma
   sigma=stddev(avgArr)
 end
 
-pro plot_quenchr, loz=loz,hiz=hiz,lom=lom
+pro plot_quenchr, loz=loz,midz=midz,hiz=hiz,lom=lom
 
 ; like plot_quenchz but with radial bins at 0.2<z<0.8, 13.6<M<14.
 
@@ -37,30 +37,33 @@ nrbins=n_elements(rbins)-1
 
 if(keyword_set(loz)) then begin
    minz=0.2
-   maxz=0.8
-   fillArr=[0,1,1,1]
+   maxz=0.5
+   fillArr=[1,1,1,1]
    minGroupMass=13.6
    maxGroupMass=14.0
    plot_suffix='_loz'
-endif else begin
-   if(keyword_set(hiz)) then begin
-      minz=0.8
-      maxz=1.0
-      fillArr=[0,0,1,1]
-      minGroupMass=13.6
-      maxGroupMass=14.0
-      plot_suffix='_hiz'
-   endif else begin
-      if(keyword_set(lom)) then begin
-         minz=0.2
-         maxz=0.5
-         fillArr=[1,1,1,1]
-         minGroupMass=13.3
-         maxGroupMass=14.6
-         plot_suffix='_lom'
-      endif
-   endelse
-endelse
+endif else if(keyword_set(midz)) then begin
+   minz=0.5
+   maxz=0.85
+   fillArr=[0,1,1,1]
+   minGroupMass=13.6
+   maxGroupMass=14.0
+   plot_suffix='_midz'
+endif else if(keyword_set(hiz)) then begin
+   minz=0.85
+   maxz=1.0
+   fillArr=[0,0,1,1]
+   minGroupMass=13.6
+   maxGroupMass=14.0
+   plot_suffix='_hiz'
+endif else if(keyword_set(lom)) then begin
+   minz=0.2
+   maxz=0.5
+   fillArr=[1,1,1,1]
+   minGroupMass=13.3
+   maxGroupMass=14.6
+   plot_suffix='_lom'
+endif
 
 ; trim catalogs to relevant cuts
 sel=where(acs.kevin_mstar GT 2 $
