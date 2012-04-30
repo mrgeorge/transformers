@@ -14,17 +14,19 @@ from esutil import cosmology
 
 def readData(imListFile):
     # read data file in IRSA format with image filenames
-    names=('id','flag','ra','dec','z','sm','r','type','bulge','color','theta','filename')
-    formats=('i4','i2','f4','f4','f4','f4','f4','i2','i2','f4','f4','S128')
+    names=('id','flag','ra','dec','z','sm','mhalo','r','type','bulge','color','theta','filename')
+    formats=('i4','i2','f4','f4','f4','f4','f4','f4','i2','i2','f4','f4','S128')
     data=np.loadtxt(imListFile,skiprows=1,dtype={'names':names, 'formats':formats})
 
     return data
 
-def selectData(data, zMin, zMax):
+def selectData(data, zMin, zMax, minMh, maxMh):
 
     sel=((data['flag'] == 1) &    # only include flag=1
          (data['z'] > zMin) &    # make a tighter z cut
-         (data['z'] < zMax))
+         (data['z'] < zMax) &
+         (data['mhalo'] > minMh) &
+         (data['mhalo'] < maxMh))
     data=data[sel]
 
     return data
@@ -271,10 +273,15 @@ def main(imDir, imListFile, plotFile, zMin, zMax):
     maxSM=12.1
     minColor=0.
     maxColor=6.
+    minMh=13.5
+    maxMh=14.0
 
     # read data
     data=readData(imListFile)
-    data=selectData(data, zMin, zMax) # cut on z range and flag=1
+    data=selectData(data, zMin, zMax, minMh, maxMh) # cut on flag=1, z-range, halo mass
+    if(data.size == 0):
+        print "no data in range"
+        return
     data=scatterCentrals(data, minR) # add offsets to centrals for display
     zMed=np.median(data['z'])
 
