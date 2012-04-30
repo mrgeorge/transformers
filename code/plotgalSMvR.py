@@ -1,4 +1,4 @@
-#!/Library/Frameworks/Python.framework/Versions/Current/bin/python
+#!/Library/Frameworks/EPD64.framework/Versions/Current/bin/python
 
 import sys
 import fitsio
@@ -37,7 +37,6 @@ def scatterCentrals(data, minR):
     # assign small negative R values for centrals for display purposes
     cen=data['r'] == 0.
     nCen=len(cen.nonzero()[0])
-    print 'centrals, total',nCen,data.shape[0]
     offset=np.linspace(0.2*minR,0.8*minR,num=nCen)
     data['r'][cen] += offset
 
@@ -59,7 +58,7 @@ def oplotZRange(plt, xText, yText, zMin, zMax):
 
 def getSMLimit(zMax):
     # return the stellar mass limit at zMax
-    smLimitFile="sm_limits.dat"
+    smLimitFile="../../auxfiles/sm_limits.dat"
     z_lim, sm_lim=np.loadtxt(smLimitFile,unpack=True,comments="#")
     thisSMLimit=np.interp(zMax,z_lim,sm_lim)
 
@@ -143,11 +142,23 @@ def prepareImage(img, imSize, fullImSize, ccw_angle, floor):
     # filter out other sources in the image
     mask=img > floor
     label_im, nb_labels = ndimage.label(mask)
-    mainLabel=label_im[img.shape[0]/2,img.shape[1]/2] # get object number for central source
-    mask2=label_im != mainLabel # select sources other than the main one
-    img[mask2]=floor # and set them to the floor value so they aren't plotted
+    if(nb_labels == 0):
+        imgBelowFloor=True
+        noCentralSource=True
+    else:
+        imgBelowFloor=False
+        mainLabel=label_im[img.shape[0]/2,img.shape[1]/2] # get object number for central source
+        if(mainLabel == 0):
+            noCentralSource=True
+        else:
+            noCentralSource=False
+            mask2=label_im != mainLabel # select sources other than the main one
+            img[mask2]=floor # and set them to the floor value so they aren't plotted
 
-    return img
+            mask3=img < floor
+            img[mask3]=floor
+
+    return (img, imgBelowFloor, noCentralSource)
 
 def threeColorCmap(c0, rgb, c1, pivot, nShades):
     # make a color map that moves from c0 to rgb to c1, switching at pivot
@@ -172,9 +183,9 @@ def oplotGalaxy(ax1, img, rScale, smScale, floor, imSizePlot, c0, rgb, c1, pivot
     # define color map using RGB color and white/gray gradient
     my_cmap=threeColorCmap(c0,rgb,c1,pivot,nShades)
 
-    ax1.imshow(np.log((img-floor)/(np.max(img)-floor)),origin='lower',extent=[rScale-0.5*imSizePlot,rScale+0.5*imSizePlot,smScale-0.5*imSizePlot,smScale+0.5*imSizePlot],cmap=my_cmap,alpha=1.,interpolation='none')
+    ax1.imshow(np.log((img-floor)/(np.max(img)-floor)),origin='lower',extent=[rScale-0.5*imSizePlot,rScale+0.5*imSizePlot,smScale-0.5*imSizePlot,smScale+0.5*imSizePlot],cmap=my_cmap,alpha=1.)
 
-def oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, minColor, maxColor, cbar2d_width):
+def oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, pivot, minColor, maxColor, cbar2d_width):
     # add a two-dimensional colorbar
 
     # set up subplot
@@ -255,18 +266,7 @@ def oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, minColor, maxColor,
     plt.ylim((minColor,maxColor))
 
     
-# MAIN
-if __name__ == '__main__':
-
-    if(len(sys.argv)!=6):
-        print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile zMin zMax"
-        exit
-
-    imDir=sys.argv[1]
-    imListFile=sys.argv[2]
-    plotFile=sys.argv[3]
-    zMin=float(sys.argv[4])
-    zMax=float(sys.argv[5])
+def main(imDir, imListFile, plotFile, zMin, zMax):
 
     # set plot ranges
     minR=-0.15
@@ -306,25 +306,58 @@ if __name__ == '__main__':
     # setup the plot
     plt,ax1,gs=setupPlot(zMin, zMed, zMax, imSize, imSizePlot, minR, maxR, minSM, maxSM)
 
+    # record stats of plotted galaxies
+    nCen=0 # number of centrals plotted
+    nShown=0 # total number of galaxies plotted
+    nBelowFloor=0 # number not shown because whole image is below floor
+    nNoSource=0 # number not shown because a source wasn't found in the middle of image
+
     for ii in range(data.shape[0]):
-        print ii,data['ra'][ii],data['dec'][ii],data['r'][ii]
 
         # read and manipulate thumbnail image
         img=fitsio.read(imDir+data['filename'][ii])
-        img=prepareImage(img, imSize, fullImSize, -data['theta'][ii], floor)
+        img,imgBelowFloor,noSource=prepareImage(img, imSize, fullImSize, -data['theta'][ii], floor)
 
-        rScale=(data['r'][ii]-minR)/(maxR-minR)
-        smScale=(data['sm'][ii]-minSM)/(maxSM-minSM)
-        colorScale=(data['color'][ii]-minColor)/(maxColor-minColor)
+        if(imgBelowFloor):
+            nBelowFloor+=1
+        elif(noSource):
+            nNoSource+=1
+        else: # image passes cuts
+            nShown+=1
+            if(data['r'][ii] <= 0):
+                nCen+=1
+                
+            rScale=(data['r'][ii]-minR)/(maxR-minR)
+            smScale=(data['sm'][ii]-minSM)/(maxSM-minSM)
+            colorScale=(data['color'][ii]-minColor)/(maxColor-minColor)
 
-        # define RGB color for this galaxy
-        rgb=matplotlib.colors.colorConverter.to_rgb(cmap(colorScale))
+            # define RGB color for this galaxy
+            rgb=matplotlib.colors.colorConverter.to_rgb(cmap(colorScale))
 
-        # plot the galaxy
-        oplotGalaxy(ax1, img, rScale, smScale, floor, imSizePlot, c0, rgb, c1, pivot, nShades)
-
+            # plot the galaxy
+            oplotGalaxy(ax1, img, rScale, smScale, floor, imSizePlot, c0, rgb, c1, pivot, nShades)
+        #end for loop over galaxies
     # plot the 2d colorbar
-    oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, minColor, maxColor, cbar2d_width)
+    oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, pivot, minColor, maxColor, cbar2d_width)
 
+    # print plot stats
+    print "nShown, nCen, nBelowFloor, nNoSource", nShown, nCen, nBelowFloor, nNoSource
+    
     # save figure
     plt.savefig(plotFile)
+
+
+# MAIN - if plotgalSMvR.py is called from command line
+if __name__ == '__main__':
+    if(len(sys.argv)!=6):
+        print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile zMin zMax"
+        exit
+
+    imDir=sys.argv[1]
+    imListFile=sys.argv[2]
+    plotFile=sys.argv[3]
+    zMin=float(sys.argv[4])
+    zMax=float(sys.argv[5])
+
+    main(imDir, imListFile, plotFile, zMin, zMax)
+    
