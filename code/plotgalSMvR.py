@@ -21,14 +21,10 @@ def readData(imListFile):
     return data
 
 def selectData(data, zMin, zMax):
-    # only include flag=1
-    sel=data['flag'] == 1
-    data=data[sel]
 
-    # make a tighter z cut
-    sel=data['z'] > zMin
-    data=data[sel]
-    sel=data['z'] < zMax
+    sel=((data['flag'] == 1) &    # only include flag=1
+         (data['z'] > zMin) &    # make a tighter z cut
+         (data['z'] < zMax))
     data=data[sel]
 
     return data
@@ -123,7 +119,7 @@ def setupPlot(zMin, zMed, zMax, imSize, imSizePlot, minR, maxR, minSM, maxSM):
 
     return (plt,ax1,gs)
 
-def prepareImage(img, imSize, fullImSize, ccw_angle, floor):
+def prepareImage(img, imSize, fullImSize, angle, floor):
     # clean up the image for plotting: crop, filter, and rotate
     
     # select inner part of image
@@ -137,7 +133,7 @@ def prepareImage(img, imSize, fullImSize, ccw_angle, floor):
     img=ndimage.median_filter(img,3)
 
     # rotate the image to align to central
-    img=ndimage.rotate(img, ccw_angle, reshape=False)
+    img=ndimage.rotate(img, angle, reshape=False)
 
     # filter out other sources in the image
     mask=img > floor
@@ -316,7 +312,7 @@ def main(imDir, imListFile, plotFile, zMin, zMax):
 
         # read and manipulate thumbnail image
         img=fitsio.read(imDir+data['filename'][ii])
-        img,imgBelowFloor,noSource=prepareImage(img, imSize, fullImSize, -data['theta'][ii], floor)
+        img,imgBelowFloor,noSource=prepareImage(img, imSize, fullImSize, data['theta'][ii], floor)
 
         if(imgBelowFloor):
             nBelowFloor+=1
