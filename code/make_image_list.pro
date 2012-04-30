@@ -3,6 +3,7 @@ pro make_image_list
 ; make list of images and filenames for downloading cutouts
 
 acs=mrdfits("../../code/lensing18_20110914.fits",1)
+group=mrdfits("~/data/cosmos/code/group5_20110914.fits",1) ; for halo masses
 ext=".list"
 listFile="../images/acs_mem"
 openw,u,listFile+ext,/get_lun,width=1000
@@ -13,9 +14,17 @@ sel=where(acs.kevin_mstar GT 9.4 $
 
 theta=fltarr(nSel)
 
+; get group masses for member galaxies
+halomass=fltarr(n_elements(acs))
+for gg=0,n_elements(group)-1 do begin
+   mem=where(acs.group_id_best EQ group[gg].id,nmem)
+   if(nmem GT 0) then halomass[mem]=group[gg].lensing_m200
+endfor
+
+
 ; this is where the image cutout filename is recorded
 ; (following IRSA's naming convention)
-printf,u,"|          id |   flag |             ra |            dec |           z |          sm |           r |   type |  bulge |       color |       theta |                                              filename |"
+printf,u,"|          id |   flag |             ra |            dec |           z |          sm |       mhalo |           r |   type |  bulge |       color |       theta |                                              filename |"
 for ii=0,nSel-1 do begin
 
    ; get angle between satellite and central (to rotate images in plot)
@@ -44,6 +53,7 @@ for ii=0,nSel-1 do begin
           acs[sel[ii]].delta_j2000,$
           acs[sel[ii]].photoz_non_comb,$
           acs[sel[ii]].kevin_mstar,$
+          halomass[sel[ii]],$
           acs[sel[ii]].dist_bcg_r200,$
           acs[sel[ii]].zest_type,$
           acs[sel[ii]].zest_bulge,$
