@@ -19,7 +19,8 @@ acs=acs[sel]
 
 ; get other properties from morph catalog
 morph=mrdfits("~/data/cosmos/catalogs/griffith/cosmos_i_public_catalog_V1.0.fits.gz",1)
-close_match_radec,acs.alpha_j2000,acs.delta_j2000,morph.ra,morph.dec,m1,m2,1./3600,1
+close_match_radec,acs.alpha_j2000,acs.delta_j2000,morph.ra,morph.dec,m1,m2,1./3600,1,miss1
+acsmiss=acs[miss1]
 acs=acs[m1]
 morph=morph[m2]
 
@@ -36,16 +37,15 @@ for gg=0,n_elements(group)-1 do begin
       ; rotate the (N up) image clockwise by theta in order the have the
       ; central-facing side of the satellite to point left on a plot
       dx=group[gg].alpha_mmgg_scale - acs[mem].alpha_j2000
-      dy=group[gg].delta_mmgg_scale - acs[mem].delta_j2000
+      dy=-group[gg].delta_mmgg_scale + acs[mem].delta_j2000
       theta[mem]=atan(dy,dx)*!radeg ; theta is CW rotation angle in degrees
    endif
 endfor
 
 ; this is where the image cutout filename is recorded
 ; (following IRSA's naming convention)
-printf,u,"|          id |   flag |             ra |            dec |           z |          sm |       mhalo |           r |  ztype | zbulge | rgflag |      rgsize |    rgsersic |        rgba |        rgpa |       color |        ssfr |         ebv |       theta |                                              filename |"
+printf,u,"|          id |   flag |             ra |            dec |           z |          sm |       mhalo |           r |  ztype | zbulge | nomatch | rgflag |      rgsize |    rgsersic |        rgba |        rgpa |       color |        ssfr |         ebv |       theta |                                              filename |"
 for ii=0,n_elements(acs)-1 do begin
-
    printf,u,$
           acs[ii].ident,$
           acs[ii].group_flag_best,$
@@ -57,6 +57,7 @@ for ii=0,n_elements(acs)-1 do begin
           acs[ii].dist_bcg_r200,$
           acs[ii].zest_type,$
           acs[ii].zest_bulge,$
+          0, $ ; nomatch flag
           morph[ii].flag_galfit_hi,$
           morph[ii].re_galfit_hi,$
           morph[ii].n_galfit_hi,$
@@ -67,7 +68,50 @@ for ii=0,n_elements(acs)-1 do begin
           acs[ii].ebv,$
           theta[ii],$
           "   "+string(acs[ii].alpha_j2000,format='(F9.5)')+"_"+string(acs[ii].delta_j2000,format='(F9.7)')+"_acs_I_mosaic_30mas_sci.fits"
+endfor
 
+; add in objects for which there is no match in morph catalog
+; first get halo masses and angles for missed matches
+halomassmiss=fltarr(n_elements(acsmiss))
+thetamiss=fltarr(n_elements(acsmiss))
+for gg=0,n_elements(group)-1 do begin
+   mem=where(acsmiss.group_id_best EQ group[gg].id,nmem)
+   if(nmem GT 0) then begin
+      halomassmiss[mem]=group[gg].lensing_m200
+      
+      ; get angle between satellite and central (to rotate images in plot)
+      ; define theta: angle between central, satellite, and east (left)
+      ; rotate the (N up) image clockwise by theta in order the have the
+      ; central-facing side of the satellite to point left on a plot
+      dx=group[gg].alpha_mmgg_scale - acsmiss[mem].alpha_j2000
+      dy=-group[gg].delta_mmgg_scale + acsmiss[mem].delta_j2000
+      thetamiss[mem]=atan(dy,dx)*!radeg ; theta is CW rotation angle in degrees
+   endif
+endfor
+
+for ii=0,n_elements(acsmiss)-1 do begin
+   printf,u,$
+          acsmiss[ii].ident,$
+          acsmiss[ii].group_flag_best,$
+          acsmiss[ii].alpha_j2000,$
+          acsmiss[ii].delta_j2000,$
+          acsmiss[ii].photoz_non_comb,$
+          acsmiss[ii].kevin_mstar,$
+          halomassmiss[ii],$
+          acsmiss[ii].dist_bcg_r200,$
+          acsmiss[ii].zest_type,$
+          acsmiss[ii].zest_bulge,$
+          1, $ ; nomatch flag
+          -99, $ ; flag_galfit_hi
+          -99., $ ; re_galfit_hi
+          -99., $ ; n_galfit_hi
+          -99., $ ; ba_galfit_hi
+          -99., $ ; pa_galfit_hi
+          acsmiss[ii].mnuv_mr,$
+          acsmiss[ii].ssfr_med,$
+          acsmiss[ii].ebv,$
+          thetamiss[ii],$
+          "   "+string(acsmiss[ii].alpha_j2000,format='(F9.5)')+"_"+string(acsmiss[ii].delta_j2000,format='(F9.7)')+"_acs_I_mosaic_30mas_sci.fits"
 endfor
 
 close,u
