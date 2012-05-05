@@ -14,17 +14,37 @@ from esutil import cosmology
 
 def readData(imListFile):
     # read data file in IRSA format with image filenames
-    names=('id','flag','ra','dec','z','sm','mhalo','r','type','bulge','color','theta','filename')
-    formats=('i4','i2','f4','f4','f4','f4','f4','f4','i2','i2','f4','f4','S128')
-    data=np.loadtxt(imListFile,skiprows=1,dtype={'names':names, 'formats':formats})
+    names=(('id','i4'),
+           ('flag','i2'),
+           ('ra','f4'),
+           ('dec','f4'),
+           ('z','f4'),
+           ('sm','f4'),
+           ('mhalo','f4'),
+           ('r','f4'),
+           ('ztype','i2'),
+           ('zbulge','i2'),
+           ('nomatch','i2'),
+           ('rgflag','i2'),
+           ('rgsize','f4'),
+           ('rgsersic','f4'),
+           ('rgba','f4'),
+           ('rgpa','f4'),
+           ('color','f4'),
+           ('ssfr','f4'),
+           ('ebv','f4'),
+           ('theta','f4'),
+           ('filename','S128')
+           )
+    data=np.loadtxt(imListFile,skiprows=1,dtype={'names':[x[0] for x in names], 'formats':[x[1] for x in names]})
 
     return data
 
-def selectData(data, zMin, zMax, minMh, maxMh):
+def selectData(data, minZ, maxZ, minMh, maxMh):
 
     sel=((data['flag'] == 1) &    # only include flag=1
-         (data['z'] > zMin) &    # make a tighter z cut
-         (data['z'] < zMax) &
+         (data['z'] > minZ) &    # make a tighter z cut
+         (data['z'] < maxZ) &
          (data['mhalo'] > minMh) &
          (data['mhalo'] < maxMh))
     data=data[sel]
@@ -49,16 +69,16 @@ def oplotScaleBar(plt, xBar, yBar, zMed, imSize, imSizePlot):
     plt.plot((xBar,xBar-imSizePlot),(yBar,yBar),linestyle='solid',color='black',linewidth=3)
     plt.text(xBar-0.5*imSizePlot,yBar+0.015,barStr,size='x-small',horizontalalignment='center',verticalalignment='bottom')
 
-def oplotZRange(plt, xText, yText, zMin, zMax):
+def oplotZRange(plt, xText, yText, minZ, maxZ):
     # add text to show z range
-    zStr=r''+str(zMin)+' $<$ z $<$ '+str(zMax)
+    zStr=r''+str(minZ)+' $<$ z $<$ '+str(maxZ)
     plt.text(xText,yText,zStr,horizontalalignment='right',verticalalignment='top')
 
-def getSMLimit(zMax):
-    # return the stellar mass limit at zMax
+def getSMLimit(maxZ):
+    # return the stellar mass limit at maxZ
     smLimitFile="../../auxfiles/sm_limits.dat"
     z_lim, sm_lim=np.loadtxt(smLimitFile,unpack=True,comments="#")
-    thisSMLimit=np.interp(zMax,z_lim,sm_lim)
+    thisSMLimit=np.interp(maxZ,z_lim,sm_lim)
 
     return thisSMLimit
 
@@ -70,7 +90,7 @@ def oplotCentralRegion(plt, minR, maxR, minSM, maxSM, smLimit):
     # add shaded region on left to show central area
     plt.fill_betweenx(((smLimit-minSM)/(maxSM-minSM),1),0,(0-minR)/(maxR-minR),color='gray',alpha=0.1)
 
-def setupPlot(zMin, zMed, zMax, imSize, imSizePlot, minR, maxR, minSM, maxSM):
+def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM):
     # setup plot of SM vs R with colorbar
     
     # use helvetica and latex
@@ -93,7 +113,7 @@ def setupPlot(zMin, zMed, zMax, imSize, imSizePlot, minR, maxR, minSM, maxSM):
     # z range text (upper right)
     xText=0.95
     yText=0.95
-    oplotZRange(plt, xText, yText, zMin, zMax)
+    oplotZRange(plt, xText, yText, minZ, maxZ)
 
     # scale bar (below z range)
     xBar=xText
@@ -101,7 +121,7 @@ def setupPlot(zMin, zMed, zMax, imSize, imSizePlot, minR, maxR, minSM, maxSM):
     oplotScaleBar(plt, xBar, yBar, zMed, imSize, imSizePlot)
     
     # bottom shaded region for SM limit
-    smLimit=getSMLimit(zMax)
+    smLimit=getSMLimit(maxZ)
     oplotSMLimit(plt, smLimit, minSM, maxSM)
 
     # left shaded region for centrals
@@ -264,7 +284,7 @@ def oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, pivot, minColor, ma
     plt.ylim((minColor,maxColor))
 
     
-def main(imDir, imListFile, plotFile, zMin, zMax):
+def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh):
 
     # set plot ranges
     minR=-0.15
@@ -273,12 +293,10 @@ def main(imDir, imListFile, plotFile, zMin, zMax):
     maxSM=12.1
     minColor=0.
     maxColor=6.
-    minMh=13.5
-    maxMh=14.0
 
     # read data
     data=readData(imListFile)
-    data=selectData(data, zMin, zMax, minMh, maxMh) # cut on flag=1, z-range, halo mass
+    data=selectData(data, minZ, maxZ, minMh, maxMh) # cut on flag=1, z-range, halo mass
     if(data.size == 0):
         print "no data in range"
         return
@@ -307,7 +325,7 @@ def main(imDir, imListFile, plotFile, zMin, zMax):
     c1=grayness*np.array((1.,1.,1.)) # RGB for gray or black
 
     # setup the plot
-    plt,ax1,gs=setupPlot(zMin, zMed, zMax, imSize, imSizePlot, minR, maxR, minSM, maxSM)
+    plt,ax1,gs=setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM)
 
     # record stats of plotted galaxies
     nCen=0 # number of centrals plotted
@@ -352,15 +370,17 @@ def main(imDir, imListFile, plotFile, zMin, zMax):
 
 # MAIN - if plotgalSMvR.py is called from command line
 if __name__ == '__main__':
-    if(len(sys.argv)!=6):
-        print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile zMin zMax"
+    if(len(sys.argv)!=8):
+        print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile minZ maxZ"
         exit
 
     imDir=sys.argv[1]
     imListFile=sys.argv[2]
     plotFile=sys.argv[3]
-    zMin=float(sys.argv[4])
-    zMax=float(sys.argv[5])
+    minZ=float(sys.argv[4])
+    maxZ=float(sys.argv[5])
+    minMh=float(sys.argv[6])
+    maxMh=float(sys.argv[7])
 
-    main(imDir, imListFile, plotFile, zMin, zMax)
+    main(imDir, imListFile, plotFile, minZ, maxZ)
     
