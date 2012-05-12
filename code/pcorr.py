@@ -1,9 +1,12 @@
 #!/Library/Frameworks/EPD64.framework/Versions/Current/bin/python
 
+import matplotlib
+matplotlib.use('Agg') # must appear before importing pyplot to get plots w/o GUI
 import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 import plotgalSMvR
+import matplotlib.gridspec as gridspec
 
 def pcorr(x,y,z,method):
     # Compute partial correlation coefficient between x and y given z
@@ -83,7 +86,8 @@ def selectData(data, minZ, maxZ, minMh, maxMh):
          (data['mhalo'] < maxMh) &
          (data['nomatch'] == 0) &
          (data['rgflag'] == 0) &
-         (data['rgba'] < 1)
+         (data['rgba'] < 1) &
+         (data['rgsize'] < 100)
          )
     data=data[sel]
 
@@ -139,6 +143,122 @@ def getOrientation(theta, rgpa):
 
     return orientation
 
+def plotScatterMatrix(variables, varStr, varTicks, scatterPlotFile):
+
+    # use helvetica and latex
+    plt.clf()
+    plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'],'size':8})
+    plt.rc('text', usetex=True)
+    plt.rc('axes',linewidth=1.5)
+
+    nVars=len(variables)
+    fig=plt.figure(1)
+    gs=gridspec.GridSpec(nVars,nVars)
+    gs.update(wspace=0,hspace=0)
+
+    for vv in range(nVars):
+         for uu in range(nVars):
+              x=variables[vv]
+              y=variables[uu]
+
+              ax=fig.add_subplot(gs[(nVars-1-uu)*nVars+vv])
+              ax.scatter(x,y,s=0.1)
+
+              if(uu == 0):
+                  plt.xlabel(varStr[vv])
+                  ax.xaxis.set_ticks(varTicks[vv])
+              else:
+                  ax.set_xticklabels([])
+              if(vv == 0):
+                  plt.ylabel(varStr[uu])
+                  ax.yaxis.set_ticks(varTicks[uu])
+              else:
+                  ax.set_yticklabels([])
+
+    print 'saving scatter plot'
+    plt.savefig(scatterPlotFile,bbox_inches='tight')
+    print 'done saving scatter plot'
+
+def pcorrMatrix(variables, method):
+
+    nVars=len(variables)
+    corrMatrix=np.zeros(nVars**2).reshape(nVars,nVars)
+    pMatrix=np.zeros_like(corrMatrix)
+    sigMatrix=np.zeros_like(corrMatrix)
+    for vv in range(nVars):
+        for uu in range(nVars):
+            controls=~((np.arange(nVars)==vv) | (np.arange(nVars)==uu)) # all vars except uu or vv
+            x=variables[vv]
+            y=variables[uu]
+            z=[variables[ww] for ww in controls.nonzero()[0]]
+            pcoeff, pval, sig=pcorr(x,y,z,method)
+            corrMatrix[vv,uu]=pcoeff
+            pMatrix[vv,uu]=pval
+            sigMatrix[vv,uu]=sig
+
+    return (corrMatrix,pMatrix,sigMatrix)
+
+def oplotText(fig, corrMatrix, sigMatrix):
+
+    nVars=len(corrMatrix)
+    x=np.indices((nVars,nVars))[0]
+    y=x.transpose()
+    yoff=0.1
+    for ii in range(nVars**2):
+        if(corrMatrix.flatten()[ii] > 0.999):
+            color='white'
+            sigStr=''
+        else:
+            color='black'
+            sigStr='%4.1f' % np.abs(sigMatrix.flatten()[ii])
+            
+        fig.text(x.flatten()[ii],y.flatten()[ii]+yoff,'%5.2f' % corrMatrix.flatten()[ii],verticalalignment='bottom', horizontalalignment='center',size='xx-small',color=color)
+        fig.text(x.flatten()[ii],y.flatten()[ii]-yoff,sigStr,verticalalignment='top', horizontalalignment='center',size='xx-small',color=color)
+        
+
+def plotCorrMatrix(variables, varStr, corrMatrix, pMatrix, sigMatrix, corrPlotFile, pPlotFile, sigPlotFile):
+
+    # use helvetica and latex
+    plt.clf()
+    plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'],'size':20})
+    plt.rc('text', usetex=True)
+    plt.rc('axes',linewidth=1.5)
+
+    nVars=len(variables)
+    my_cmap=matplotlib.colors.LinearSegmentedColormap.from_list('BlWBk',('blue','white','black'))
+    
+    plt.imshow(corrMatrix,interpolation='nearest',origin='lower',cmap=my_cmap,vmin=-1,vmax=1)
+    oplotText(plt, corrMatrix, sigMatrix)
+    xlocs, xlabels=plt.xticks(range(nVars),varStr)
+    ylocs, ylabels=plt.yticks(range(nVars),varStr)
+    plt.setp(xlabels,'rotation','vertical')
+    plt.tick_params(which='both',length=0)
+    plt.colorbar()
+    
+    plt.savefig(corrPlotFile,bbox_inches='tight')
+
+def getVariables(varNames, data):
+    
+    indTheta=(varNames == 'theta')
+    indSize=(varNames == 'rgsize')
+    if(len(indTheta.nonzero()[0]) == 0):
+        variables=[data[x] for x in varNames]
+    else:
+        theta=getOrientation(data['theta'],data['rgpa'])
+        if(varNames[0] == 'theta'):
+            variables=[theta]
+        else:
+            variables=[data[varNames[0]]]
+        for ii in range(1,len(varNames)):
+            if(varNames[ii] == 'theta'):
+                variables.append(theta)
+            else:
+                variables.append(data[varNames[ii]])
+
+    if(len(indSize.nonzero()[0] > 0)):
+        variables[indSize.nonzero()[0]]=np.log10(variables[indSize.nonzero()[0]])
+
+    return variables
 
 def main():
     imDir="../images/"
@@ -153,49 +273,34 @@ def main():
     data=plotgalSMvR.readData(imListFile)
     data=selectData(data, minZ, maxZ, minMh, maxMh)
 
-    varStr=['z','mhalo','sm','r','rgsize','rgba','rgsersic','color','ebv']
-    variables=[data[x] for x in varStr]
+    allVars={'z':       ('z', (0,0.5,1)),
+             'sm':      (r'log(M$_{\star}$/M$_{\odot}$)', (9.5,10.5,11.5)),
+             'mhalo':   (r'log(M$_{\rm 200c}$/M$_{\odot}$)', (13.5, 13.7, 13.9)),
+             'r':       (r'R/R$_{\rm 200c}$', (0,0.5,1.)),
+             'rgsize':  (r'log(R$_e$/kpc)', (0, 1, 2)),
+             'rgsersic':(r'n$_S$', (0, 4, 8)),
+             'color':   ('NUV-R', (0,3,6)),
+             'ebv':     ('E(B-V)', (0,0.3,0.6)),
+             'theta':   (r'$\theta$ (deg)', (0,45,90))
+             }
 
-    #    variables=(data['z'],
-               # data['mhalo'],
-               # data['sm'],
-               #           data['r'],
-               # data['rgsize'],
-               #data['rgba'],
-               # data['rgsersic'],
-               # data['color'],
-               # data['ebv'],
-               #getOrientation(data['theta'],data['rgpa'])
-               #)
+    choiceVars=np.array(['z','sm','mhalo','r','rgsize','rgsersic','color'])
+    variables=getVariables(choiceVars, data)
+    varStr=[allVars[x][0] for x in choiceVars]
+    varTicks=[allVars[x][1] for x in choiceVars]
 
-    nVars=len(variables)
-    corrMatrix=np.zeros(nVars**2).reshape(nVars,nVars)
-    pMatrix=np.zeros_like(corrMatrix)
-    sigMatrix=np.zeros_like(corrMatrix)
     method='s' # spearman rank
-    for vv in range(nVars):
-         for uu in range(nVars):
-              controls=~((np.arange(nVars)==vv) | (np.arange(nVars)==uu)) # all vars except uu or vv
-              x=variables[vv]
-              y=variables[uu]
-              z=[variables[ww] for ww in controls.nonzero()[0]]
-              pcoeff, pval, sig=pcorr(x,y,z,method)
-              corrMatrix[vv,uu]=pcoeff
-              pMatrix[vv,uu]=pval
-              sigMatrix[vv,uu]=sig
 
-    plt.imshow(corrMatrix,interpolation='nearest',cmap=plt.cm.binary,origin='lower')
-    xlocs, xlabels=plt.xticks(range(nVars),varStr)
-    ylocs, ylabels=plt.yticks(range(nVars),varStr)
-    plt.setp(xlabels,'rotation','vertical')
-    plt.colorbar()
-    plt.show()
+    scatterPlotFile=plotDir+"scattermatrix.pdf"
+    plotScatterMatrix(variables, varStr, varTicks, scatterPlotFile)
 
-    print corrMatrix
-    print pMatrix
-    print sigMatrix
+    corrPlotFile=plotDir+"corrmatrix.pdf"
+    pPlotFile=plotDir+"pmatrix.pdf"
+    sigPlotFile=plotDir+"sigmatrix.pdf"
+    corrMatrix, pMatrix, sigMatrix = pcorrMatrix(variables, method)
 
-    print "end"
+    plotCorrMatrix(variables, varStr, corrMatrix, pMatrix, sigMatrix, corrPlotFile, pPlotFile, sigPlotFile)
+
 
 # MAIN - if called from command line
 if __name__ == '__main__':
