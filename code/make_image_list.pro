@@ -18,7 +18,8 @@ sel=where(acs.kevin_mstar GT 9.4 $
 acs=acs[sel]
 
 ; get other properties from morph catalog
-morph=mrdfits("~/data/cosmos/catalogs/griffith/cosmos_i_public_catalog_V1.0.fits.gz",1)
+;morph=mrdfits("~/data/cosmos/catalogs/griffith/cosmos_i_public_catalog_V1.0.fits.gz",1)
+morph=mrdfits("~/data/cosmos/catalogs/griffith/ACS-GC_published_catalogs/cosmos_i_public_catalog_V1.0.fits.gz",1)
 close_match_radec,acs.alpha_j2000,acs.delta_j2000,morph.ra,morph.dec,m1,m2,1./3600,1,miss1
 acsmiss=acs[miss1]
 acs=acs[m1]
@@ -45,6 +46,10 @@ endfor
 ; this is where the image cutout filename is recorded
 ; (following IRSA's naming convention)
 printf,u,"|          id |   flag |             ra |            dec |           z |          sm |       mhalo |           r |  ztype | zbulge | nomatch | rgflag |      rgsize |    rgsersic |        rgba |        rgpa |       color |        ssfr |         ebv |       theta |                                              filename |"
+
+; convert size from pixels to kpc
+pixScale=0.05 ; arcsec/pixel
+
 for ii=0,n_elements(acs)-1 do begin
    printf,u,$
           acs[ii].ident,$
@@ -59,7 +64,7 @@ for ii=0,n_elements(acs)-1 do begin
           acs[ii].zest_bulge,$
           0, $ ; nomatch flag
           morph[ii].flag_galfit_hi,$
-          morph[ii].re_galfit_hi,$
+          as2kpc(morph[ii].re_galfit_hi * pixScale, acs[ii].photoz_non_comb),$ ; kpc
           morph[ii].n_galfit_hi,$
           morph[ii].ba_galfit_hi,$
           morph[ii].pa_galfit_hi,$
@@ -129,5 +134,7 @@ if(n_elements(acs) GT 1000) then begin
    endfor
    print,nLists,' sub-lists printed'
 endif
+
+stop
 
 end
