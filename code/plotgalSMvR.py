@@ -1,6 +1,5 @@
 #!/Library/Frameworks/EPD64.framework/Versions/Current/bin/python
 
-import sys
 import fitsio
 import matplotlib
 matplotlib.use('Agg') # must appear before importing pyplot to get plots w/o GUI
@@ -370,6 +369,7 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh):
 
 # MAIN - if plotgalSMvR.py is called from command line
 if __name__ == '__main__':
+    import sys
     if(len(sys.argv)!=8):
         print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile minZ maxZ"
         exit
