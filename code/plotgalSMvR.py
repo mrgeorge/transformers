@@ -107,7 +107,7 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM):
     ax1=plt.subplot(gs[:,:-1])
 
     plt.xlabel(r'R/R$_{200{\rm c}}$',fontsize='medium')
-    plt.ylabel(r'log(M$_{\star}$)',fontsize='medium')
+    plt.ylabel(r'log(M$_{\star}/$M$_{\odot}$)',fontsize='medium')
 
     # z range text (upper right)
     xText=0.95
@@ -194,15 +194,34 @@ def threeColorCmap(c0, rgb, c1, pivot, nShades):
     my_cmap=matplotlib.colors.LinearSegmentedColormap('my_colormap',cdict,N=nShades)
     return my_cmap
 
-def oplotGalaxy(ax1, img, rScale, smScale, floor, imSizePlot, c0, rgb, c1, pivot, nShades):
+def normalizeImage(img, floor, cmap, cmin, cmax):
+   # convert MxN image to RGBA (MxNx4 RGB+alpha transparency) image
+   # renormalized with log scaling
+        
+   peak=np.max(img)
+   normImg=cmap(cmin+(cmax-cmin)*np.log(img/floor)/np.log(peak/floor))
+
+   # set alpha transparency channel (img~floor -> 0, else ~1)
+   normImg[:,:,3]=(np.log(img/floor)/np.log(peak/floor))**0.1
+   # trim edges by making them transparent
+   eps=0.0
+   low=img <= (1.+eps)*floor
+   normImg[low,3]=0.
+
+   return normImg
+
+def oplotGalaxy(ax1, img, rScale, smScale, floor, imSizePlot, c0, rgb, c1, pivot, cmin, cmax, nShades):
     # plot the image of the galaxy with an appropriate color map
     
     # define color map using RGB color and white/gray gradient
     my_cmap=threeColorCmap(c0,rgb,c1,pivot,nShades)
 
-    ax1.imshow(np.log((img-floor)/(np.max(img)-floor)),origin='lower',extent=[rScale-0.5*imSizePlot,rScale+0.5*imSizePlot,smScale-0.5*imSizePlot,smScale+0.5*imSizePlot],cmap=my_cmap,alpha=1.)
+    # normalize and log-scale image, and get RGBA array
+    normImg=normalizeImage(img, floor, my_cmap, cmin, cmax)
 
-def oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, pivot, minColor, maxColor, cbar2d_width):
+    ax1.imshow(normImg,origin='lower',extent=[rScale-0.5*imSizePlot,rScale+0.5*imSizePlot,smScale-0.5*imSizePlot,smScale+0.5*imSizePlot],interpolation='nearest')
+
+def oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, pivot, cmin, cmax, minColor, maxColor, cbar2d_width):
     # add a two-dimensional colorbar
 
     # set up subplot
@@ -212,56 +231,33 @@ def oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, pivot, minColor, ma
     cbar2d_im=np.linspace(0,nColors*nShades-1,num=nColors*nShades).reshape(nColors,nShades)/(nColors*nShades)
 
     # color dictionary and index arrays
-    cbar2d_cdict_r=np.zeros((3*nColors,3))
-    cbar2d_cdict_g=np.zeros((3*nColors,3))
-    cbar2d_cdict_b=np.zeros((3*nColors,3))
+    # first dim is 3 entries for each row in the colorbar image
+    # second dim is x, y0, y1 for each of those 3 coordinates
+    # third dim is for r,g,b
+    cbar2d_cdict_rgb=np.zeros((3*nColors,3,3))
     ones=np.arange(0,nColors)*3 # left side, white
     twos=ones+1 # pivot x, color
     threes=twos+1 # right side, gray
 
     # assign RGB values to each color
-    rgb_2d=np.zeros((nColors,3))
-    for cc in range(nColors):
-        rgb_2d[cc,:]=matplotlib.colors.colorConverter.to_rgb(cmap(float(cc)/nColors))
+    rgb_2d=(cmap(1.*np.arange(nColors)/nColors))[:,0:3]
 
     # fill in color dictionary
-    # red
-    cbar2d_cdict_r[ones,0]=np.linspace(0,nColors-1,num=nColors)/nColors # left side
-    cbar2d_cdict_r[ones,1]=c0[0] # white
-    cbar2d_cdict_r[ones,2]=c0[0]
-    cbar2d_cdict_r[twos,0]=cbar2d_cdict_r[ones,0]+pivot/nColors # middle pivot
-    cbar2d_cdict_r[twos,1]=rgb_2d[:,0] # color
-    cbar2d_cdict_r[twos,2]=rgb_2d[:,0]
-    cbar2d_cdict_r[threes,0]=cbar2d_cdict_r[ones,0]+float(nShades-1)/(nShades*nColors) # right side
-    cbar2d_cdict_r[threes,1]=c1[0] # gray
-    cbar2d_cdict_r[threes,2]=c1[0]
-    cbar2d_cdict_r[-1,0]=1. # set last xval=1 by hand
-    # green
-    cbar2d_cdict_g[ones,0]=np.linspace(0,nColors-1,num=nColors)/nColors # left side
-    cbar2d_cdict_g[ones,1]=c0[1] # white
-    cbar2d_cdict_g[ones,2]=c0[1]
-    cbar2d_cdict_g[twos,0]=cbar2d_cdict_g[ones,0]+pivot/nColors # middle pivot
-    cbar2d_cdict_g[twos,1]=rgb_2d[:,1] # color
-    cbar2d_cdict_g[twos,2]=rgb_2d[:,1]
-    cbar2d_cdict_g[threes,0]=cbar2d_cdict_g[ones,0]+float(nShades-1)/(nShades*nColors) # right side
-    cbar2d_cdict_g[threes,1]=c1[1] # gray
-    cbar2d_cdict_g[threes,2]=c1[1]
-    cbar2d_cdict_g[-1,0]=1. # set last xval=1 by hand
-    # blue
-    cbar2d_cdict_b[ones,0]=np.linspace(0,nColors-1,num=nColors)/nColors # left side
-    cbar2d_cdict_b[ones,1]=c0[2] # white
-    cbar2d_cdict_b[ones,2]=c0[2]
-    cbar2d_cdict_b[twos,0]=cbar2d_cdict_b[ones,0]+pivot/nColors # middle pivot
-    cbar2d_cdict_b[twos,1]=rgb_2d[:,2] # color
-    cbar2d_cdict_b[twos,2]=rgb_2d[:,2]
-    cbar2d_cdict_b[threes,0]=cbar2d_cdict_b[ones,0]+float(nShades-1)/(nShades*nColors) # right side
-    cbar2d_cdict_b[threes,1]=c1[2] # gray
-    cbar2d_cdict_b[threes,2]=c1[2]
-    cbar2d_cdict_b[-1,0]=1. # set last xval=1 by hand
+    for cc in range(3):
+       cbar2d_cdict_rgb[ones,0,cc]=np.linspace(0,nColors-1,num=nColors)/nColors # left side
+       cbar2d_cdict_rgb[ones,1,cc]=c0[cc] + cmin/pivot*(rgb_2d[:,cc]-c0[cc]) # white end
+       cbar2d_cdict_rgb[ones,2,cc]=c0[cc] + cmin/pivot*(rgb_2d[:,cc]-c0[cc])
+       cbar2d_cdict_rgb[twos,0,cc]=cbar2d_cdict_rgb[ones,0,cc]+pivot/nColors # middle pivot
+       cbar2d_cdict_rgb[twos,1,cc]=rgb_2d[:,cc] # color
+       cbar2d_cdict_rgb[twos,2,cc]=rgb_2d[:,cc]
+       cbar2d_cdict_rgb[threes,0,cc]=cbar2d_cdict_rgb[ones,0,cc]+float(nShades-1)/(nShades*nColors) # right side
+       cbar2d_cdict_rgb[threes,1,cc]=rgb_2d[:,cc] + (cmax-pivot)/(1.-pivot)*(c1[cc]-rgb_2d[:,cc]) # gray end
+       cbar2d_cdict_rgb[threes,2,cc]=rgb_2d[:,cc] + (cmax-pivot)/(1.-pivot)*(c1[cc]-rgb_2d[:,cc])
+       cbar2d_cdict_rgb[-1,0,cc]=1. # set last xval=1 by hand
 
-    cbar2d_cdict={'red':cbar2d_cdict_r,
-                  'green':cbar2d_cdict_g,
-                  'blue':cbar2d_cdict_b}
+    cbar2d_cdict={'red':cbar2d_cdict_rgb[:,:,0],
+                  'green':cbar2d_cdict_rgb[:,:,1],
+                  'blue':cbar2d_cdict_rgb[:,:,2]}
 
     # define color for each of nColors and nShades
     my_cmap_2d=matplotlib.colors.LinearSegmentedColormap('my_colormap_2d',cbar2d_cdict,N=nColors*nShades)
@@ -290,8 +286,8 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh):
     maxR=1.05
     minSM=9.3
     maxSM=12.1
-    minColor=0.
-    maxColor=6.
+    minColor=0. # min M(NUV)-M(R) for colorbar
+    maxColor=6. # max M(NUV)-M(R) for colorbar
 
     # read data
     data=readData(imListFile)
@@ -313,17 +309,20 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh):
     cbar2d_width=0.6 # sets how big the colorbar looks
 
     # color params
-    pivot=0.7    # (0.-1.) sets flux for max color (lower->white, higher->gray)
+    pivot=0.6    # (0.-1.) sets flux for max color (lower->white, higher->gray)
     grayness=0.5 # (0.-1.) sets how dark the centers of galaxies look (0.->black)
     nColors=256
     nShades=256
 
     # define red to blue colormap and white/gray colors
     cmap=matplotlib.cm.jet
-    c0=np.array((1.,1.,1.)) # RGB for white
-    c1=grayness*np.array((1.,1.,1.)) # RGB for gray or black
+    c0=np.array((1.,1.,1.)) # RGB for white, left side of colorbar
+    c1=grayness*np.array((1.,1.,1.)) # RGB for gray or black, right side of colorbar
+    # cmin, cmax set range of shades from white to gray used
+    cmin=0.25 # 0 -> pure white, higher to leave some color
+    cmax=1.0 # 1 -> pure gray/black, lower to leave some color
 
-    # setup the plot
+    # set up the plot
     plt,ax1,gs=setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM)
 
     # record stats of plotted galaxies
@@ -352,13 +351,13 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh):
             colorScale=(data['color'][ii]-minColor)/(maxColor-minColor)
 
             # define RGB color for this galaxy
-            rgb=matplotlib.colors.colorConverter.to_rgb(cmap(colorScale))
+            rgb=(cmap(colorScale))[0:3]
 
             # plot the galaxy
-            oplotGalaxy(ax1, img, rScale, smScale, floor, imSizePlot, c0, rgb, c1, pivot, nShades)
+            oplotGalaxy(ax1, img, rScale, smScale, floor, imSizePlot, c0, rgb, c1, pivot, cmin, cmax, nShades)
         #end for loop over galaxies
     # plot the 2d colorbar
-    oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, pivot, minColor, maxColor, cbar2d_width)
+    oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, pivot, cmin, cmax, minColor, maxColor, cbar2d_width)
 
     # print plot stats
     print "nShown, nCen, nBelowFloor, nNoSource", nShown, nCen, nBelowFloor, nNoSource
