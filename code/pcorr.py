@@ -475,10 +475,10 @@ def main(csOption='censat', limOption='all'):
     minZ, maxZ, minMh, maxMh, minSM, maxSM, zTicks, mhTicks, smTicks = setupBins(limOption)
     nBins=len(minZ)
     if(csOption == 'cen'):
-        choiceVars=np.array(['z','sm','mhalo','rgsize','rgsersic','color','ebv'])
+        choiceVars=np.array(['z','sm','mhalo','rgsize','rgsersic','color'])
         controlVars=np.array([0,1,2]) # indices of choiceVars that will be held fixed
     else:
-        choiceVars=np.array(['z','sm','mhalo','r','rgsize','rgsersic','color','ebv'])
+        choiceVars=np.array(['z','sm','mhalo','r','rgsize','rgsersic','color'])
         controlVars=np.array([0,1,2,3]) # indices of choiceVars that will be held fixed
 
     dataAll=plotgalSMvR.readData(imListFile)
