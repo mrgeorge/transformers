@@ -12,7 +12,7 @@ pro bootstrap, arr, average, sigma
   sigma=stddev(avgArr)
 end
 
-pro plot_quenchr, loz=loz,midz=midz,hiz=hiz,lom=lom
+pro plot_quenchr, loz=loz,midz=midz,hiz=hiz,lom=lom,red=red,blue=blue
 
 ; like plot_quenchz but with radial bins at 0.2<z<0.8, 13.6<M<14.
 
@@ -37,8 +37,8 @@ nrbins=n_elements(rbins)-1
 
 if(keyword_set(loz)) then begin
    minz=0.2
-   maxz=0.5
-   fillArr=[1,1,1,1]
+   maxz=0.8
+   fillArr=[0,1,1,1]
    minGroupMass=13.6
    maxGroupMass=14.0
    plot_suffix='_loz'
@@ -50,7 +50,7 @@ endif else if(keyword_set(midz)) then begin
    maxGroupMass=14.0
    plot_suffix='_midz'
 endif else if(keyword_set(hiz)) then begin
-   minz=0.85
+   minz=0.80
    maxz=1.0
    fillArr=[0,0,1,1]
    minGroupMass=13.6
@@ -98,12 +98,25 @@ group=group[sel]
 quench=(acs.mnuv_mr GT 3.5)
 
 ; use ZEST type 1,2.0
-ell=(acs.zest_type EQ 1 $       ; ellipticals and spheroidals
+nMorph=3 ; 3 morphological categories
+morph=intarr(nMorph,n_elements(acs))
+morph[0,*]=(acs.zest_type EQ 1 $       ; ellipticals and spheroidals
      OR (acs.zest_type EQ 2 AND acs.zest_bulge EQ 0))
-; other ZEST disk categories
-disk21=(acs.zest_type EQ 2 AND acs.zest_bulge EQ 1)
-disk22=(acs.zest_type EQ 2 AND acs.zest_bulge EQ 2)
-disk23=(acs.zest_type EQ 2 AND acs.zest_bulge EQ 3)
+morph[1,*]=(acs.zest_type EQ 2 AND acs.zest_bulge EQ 1) ; intermediate disks
+morph[2,*]=(acs.zest_type EQ 2 AND (acs.zest_bulge EQ 2 OR acs.zest_bulge EQ 3)) ; bulgeless disks
+
+if(keyword_set(red)) then begin
+   color_suffix='_red'
+   morph *= rebin(transpose(quench),nMorph,n_elements(quench))
+   quenchSel=quench
+endif else if(keyword_set(blue)) then begin
+   color_suffix='_blue'
+   morph *= rebin(~(transpose(quench)),nMorph,n_elements(quench))
+   quenchSel=~quench
+endif else begin
+   color_suffix=''
+   quenchSel=replicate(1,n_elements(quench))
+endelse
 
 ; get group masses for member galaxies
 halomass=fltarr(n_elements(acs))
@@ -113,14 +126,14 @@ for gg=0,ngroups-1 do begin
 endfor
 
 ; group fractions by bin (i.e. lump all galaxies in groups together)
-quenchFracMem=fltarr(nSMbins,nrbins)
-quenchFracMemErr=fltarr(nSMbins,nrbins)
-quenchFracMemBoot=fltarr(nSMbins,nrbins)
-quenchFracMemErrBoot=fltarr(nSMbins,nrbins)
-ellFracMem=fltarr(nSMbins,nrbins)
-ellFracMemErr=fltarr(nSMbins,nrbins)
-ellFracMemBoot=fltarr(nSMbins,nrbins)
-ellFracMemErrBoot=fltarr(nSMbins,nrbins)
+quenchFracMem=fltarr(nMorph,nSMbins,nrbins)
+quenchFracMemErr=fltarr(nMorph,nSMbins,nrbins)
+quenchFracMemBoot=fltarr(nMorph,nSMbins,nrbins)
+quenchFracMemErrBoot=fltarr(nMorph,nSMbins,nrbins)
+morphFracMem=fltarr(nMorph,nSMbins,nrbins)
+morphFracMemErr=fltarr(nMorph,nSMbins,nrbins)
+morphFracMemBoot=fltarr(nMorph,nSMbins,nrbins)
+morphFracMemErrBoot=fltarr(nMorph,nSMbins,nrbins)
 memSM=fltarr(nSMbins,nrbins)
 memSMLo=fltarr(nSMbins,nrbins)
 memSMHi=fltarr(nSMbins,nrbins)
@@ -129,74 +142,96 @@ memRLo=fltarr(nSMbins,nrbins)
 memRHi=fltarr(nSMbins,nrbins)
 
 ; centrals
-quenchFracCen=fltarr(nSMbins)
-quenchFracCenBoot=fltarr(nSMbins)
-quenchFracCenErrBoot=fltarr(nSMbins)
-ellFracCen=fltarr(nSMbins)
-ellFracCenBoot=fltarr(nSMbins)
-ellFracCenErrBoot=fltarr(nSMbins)
+quenchFracCen=fltarr(nMorph,nSMbins)
+quenchFracCenBoot=fltarr(nMorph,nSMbins)
+quenchFracCenErrBoot=fltarr(nMorph,nSMbins)
+morphFracCen=fltarr(nMorph,nSMbins)
+morphFracCenBoot=fltarr(nMorph,nSMbins)
+morphFracCenErrBoot=fltarr(nMorph,nSMbins)
 
 ; field fractions (lumping all field galaxies together)
-quenchFracField=fltarr(nSMbins,nrbins)
-quenchFracFieldErr=fltarr(nSMbins,nrbins)
-ellFracField=fltarr(nSMbins,nrbins)
-ellFracFieldErr=fltarr(nSMbins,nrbins)
-fieldSM=fltarr(nSMbins,nrbins)
-fieldSMLo=fltarr(nSMbins,nrbins)
-fieldSMHi=fltarr(nSMbins,nrbins)
+quenchFracField=fltarr(nMorph,nSMbins)
+quenchFracFieldErr=fltarr(nMorph,nSMbins)
+morphFracField=fltarr(nMorph,nSMbins)
+morphFracFieldErr=fltarr(nMorph,nSMbins)
+fieldSM=fltarr(nSMbins)
+fieldSMLo=fltarr(nSMbins)
+fieldSMHi=fltarr(nSMbins)
 
-for rr=0,nrbins-1 do begin
-   for sm=0,nSMbins-1 do begin
-      ; centrals
-      if(rr EQ 0) then begin ; only need to do this once
-         cen=where(acs.mmgg_scale EQ 1 $
-                   AND haloMass GE minGroupMass $
-                   AND haloMass LT maxGroupMass $
-                   AND acs.kevin_mstar GE smbins[sm] $
-                   AND acs.kevin_mstar LT smbins[sm+1] $
-                   AND acs.photoz_non_comb GE minz $
-                   AND acs.photoz_non_comb LT maxz $
-                   , ncen)
-         if(ncen GT 5) then begin
-            tmp=where(quench[cen] EQ 1,nQuenchCen)
-            tmp=where(ell[cen] EQ 1,nEllCen)
-            quenchFracCen[sm]=float(nQuenchCen)/ncen
-            bootstrap,quench[cen],mean,sigma
-            quenchFracCenBoot[sm]=mean
-            quenchFracCenErrBoot[sm]=sigma
-            ellFracCen[sm]=float(nEllCen)/ncen
-            bootstrap,ell[cen],mean,sigma
-            ellFracCenBoot[sm]=mean
-            ellFracCenErrBoot[sm]=sigma
-         endif else begin ; not enough objects, don't plot
-            quenchFracCen[sm]=!values.f_nan
-            quenchFracCenBoot[sm]=!values.f_nan
-            quenchFracCenErrBoot[sm]=!values.f_nan
-            ellFracCen[sm]=!values.f_nan
-            ellFracCenBoot[sm]=!values.f_nan
-            ellFracCenErrBoot[sm]=!values.f_nan
+for sm=0,nSMbins-1 do begin
+   ; centrals
+   cen=where(acs.mmgg_scale EQ 1 $
+             AND haloMass GE minGroupMass $
+             AND haloMass LT maxGroupMass $
+             AND acs.kevin_mstar GE smbins[sm] $
+             AND acs.kevin_mstar LT smbins[sm+1] $
+             AND acs.photoz_non_comb GE minz $
+             AND acs.photoz_non_comb LT maxz $
+             AND quenchSel $
+             , ncen)
+   if(ncen GT 5) then begin
+      for mm=0,nMorph-1 do begin
+         tmp=where(morph[mm,cen] EQ 1,nMorphCen)
+         morphFracCen[mm,sm]=float(nMorphCen)/ncen
+         bootstrap,morph[mm,cen],mean,sigma
+         morphFracCenBoot[mm,sm]=mean
+         morphFracCenErrBoot[mm,sm]=sigma
+
+         if(nMorphCen GT 5) then begin
+            tmp2=where(quench[cen[tmp]] EQ 1,nQuenchCen)
+            quenchFracCen[mm,sm]=float(nQuenchCen)/nMorphCen
+            bootstrap,quench[cen[tmp]],mean,sigma
+            quenchFracCenBoot[mm,sm]=mean
+            quenchFracCenErrBoot[mm,sm]=sigma
+         endif else begin
+            quenchFracCen[mm,sm]=!values.f_nan
+            quenchFracCenBoot[mm,sm]=!values.f_nan
+            quenchFracCenErrBoot[mm,sm]=!values.f_nan
          endelse
-      endif
+      endfor
+   endif else begin             ; not enough objects, don't plot
+      morphFracCen[*,sm]=!values.f_nan
+      morphFracCenBoot[*,sm]=!values.f_nan
+      morphFracCenErrBoot[*,sm]=!values.f_nan
 
-      ; get info for field in this r,SM bin
-      field=where(acs.p_mem_best EQ 0 $
-                  AND acs.kevin_mstar GE smbins[sm] $
-                  AND acs.kevin_mstar LT smbins[sm+1] $
-                  AND acs.photoz_non_comb GE minz $
-                  AND acs.photoz_non_comb LT maxz $
-                  ,nfield)
-      if(nfield GT 0) then begin
-         tmp=where(quench[field] EQ 1,nQuenchField)
-         tmp=where(ell[field] EQ 1,nEllField)
-         quenchFracField[sm,rr]=float(nQuenchField)/nfield
-         quenchFracFieldErr[sm,rr]=quenchFracField[sm,rr]*sqrt(1./nQuenchField+1./nfield)
-         ellFracField[sm,rr]=float(nEllField)/nfield
-         ellFracFieldErr[sm,rr]=ellFracField[sm,rr]*sqrt(1./nEllField+1./nfield)
-         fieldSM[sm,rr]=alog10(mean(10.^(acs[field].kevin_mstar)))
-         fieldSMLo[sm,rr]=fieldSM[sm,rr]-smbins[sm]
-         fieldSMHi[sm,rr]=smbins[sm+1]-fieldSM[sm,rr]
-      endif
+      quenchFracCen[*,sm]=!values.f_nan
+      quenchFracCenBoot[*,sm]=!values.f_nan
+      quenchFracCenErrBoot[*,sm]=!values.f_nan
+   endelse
 
+   ; get info for field in this SM bin
+   field=where(acs.p_mem_best EQ 0 $
+               AND acs.kevin_mstar GE smbins[sm] $
+               AND acs.kevin_mstar LT smbins[sm+1] $
+               AND acs.photoz_non_comb GE minz $
+               AND acs.photoz_non_comb LT maxz $
+               AND quenchSel $
+               ,nfield)
+   if(nfield GT 10) then begin
+      for mm=0,nMorph-1 do begin
+         tmp=where(morph[mm,field] EQ 1,nMorphField)
+         morphFracField[mm,sm]=float(nMorphField)/nfield
+         ; if used, should be changed to binomial or bootstrap - morphFracFieldErr[mm,sm,rr]=morphFracField[mm,sm,rr]*sqrt(1./nMorphField+1./nfield)
+
+         if(nMorphField GT 10) then begin
+            tmp2=where(quench[field[tmp]] EQ 1,nQuenchField)
+            quenchFracField[mm,sm]=float(nQuenchField)/nMorphField
+            ; if used, should be changed to binomial or bootstrap - quenchFracFieldErr[sm]=quenchFracField[sm]*sqrt(1./nQuenchField+1./nfield)
+         endif else begin
+            quenchFracField[mm,sm]=!values.f_nan
+         endelse
+      endfor
+
+      fieldSM[sm]=alog10(mean(10.^(acs[field].kevin_mstar)))
+      fieldSMLo[sm]=fieldSM[sm]-smbins[sm]
+      fieldSMHi[sm]=smbins[sm+1]-fieldSM[sm]
+   endif else begin
+      morphFracField[*,sm]=!values.f_nan
+      quenchFracField[*,sm]=!values.f_nan
+   endelse
+
+   ; Satellites in radial bins
+   for rr=0,nrbins-1 do begin
       ; get info for galaxies in groups in this r,SM bin
       mem=where(acs.group_flag_best EQ 1 $
                 AND acs.p_mem_best GT 0.5 $
@@ -208,30 +243,48 @@ for rr=0,nrbins-1 do begin
                 AND acs.kevin_mstar LT smbins[sm+1] $
                 AND acs.photoz_non_comb GE minz $
                 AND acs.photoz_non_comb LT maxz $
+                AND quenchSel $
                 ,nmem)
-      if(nmem GT 0) then begin
-         tmp=where(quench[mem] EQ 1,nQuenchMem)
-         tmp=where(ell[mem] EQ 1,nEllMem)
-         quenchFracMem[sm,rr]=float(nQuenchMem)/nmem
-;         quenchFracMemErr[sm,rr]=quenchFracMem[sm,rr]*sqrt(1./nQuenchMem+1./nmem)
-         quenchFracMemErr[sm,rr]=sqrt(1.*(nQuenchMem+1)*(nmem-nQuenchMem+1)/((nmem+3)*(nmem+2)^2)) ; binomial stddev - see http://www.roma1.infn.it/~dagos/proportions/node3.html
-         bootstrap,quench[mem],mean,sigma
-         quenchFracMemBoot[sm,rr]=mean
-         quenchFracMemErrBoot[sm,rr]=sigma
-         ellFracMem[sm,rr]=float(nEllMem)/nmem
+      if(nmem GT 5) then begin
+         for mm=0,nMorph-1 do begin
+            tmp=where(morph[mm,mem] EQ 1,nMorphMem)
+            morphFracMem[mm,sm,rr]=float(nMorphMem)/nmem
 ;         ellFracMemErr[sm,rr]=ellFracMem[sm,rr]*sqrt(1./nEllMem+1./nmem)
-         ellFracMemErr[sm,rr]=sqrt(1.*(nEllMem+1)*(nmem-nEllMem+1)/((nmem+3)*(nmem+2)^2)) ; binomial stddev - see http://www.roma1.infn.it/~dagos/proportions/node3.html
-         bootstrap,ell[mem],mean,sigma
-         ellFracMemBoot[sm,rr]=mean
-         ellFracMemErrBoot[sm,rr]=sigma
+            morphFracMemErr[mm,sm,rr]=sqrt(1.*(nMorphMem+1)*(nmem-nMorphMem+1)/((nmem+3)*(nmem+2)^2)) ; binomial stddev - see http://www.roma1.infn.it/~dagos/proportions/node3.html
+            bootstrap,morph[mm,mem],mean,sigma
+            morphFracMemBoot[mm,sm,rr]=mean
+            morphFracMemErrBoot[mm,sm,rr]=sigma
+
+            if(nMorphMem GT 5) then begin
+               tmp2=where(quench[mem[tmp]] EQ 1,nQuenchMem)
+               quenchFracMem[mm,sm,rr]=float(nQuenchMem)/nMorphMem
+     ;         quenchFracMemErr[sm,rr]=quenchFracMem[sm,rr]*sqrt(1./nQuenchMem+1./nmem)
+               quenchFracMemErr[mm,sm,rr]=sqrt(1.*(nQuenchMem+1)*(nmem-nQuenchMem+1)/((nmem+3)*(nmem+2)^2)) ; binomial stddev - see http://www.roma1.infn.it/~dagos/proportions/node3.html
+               bootstrap,quench[mem[tmp]],mean,sigma
+               quenchFracMemBoot[mm,sm,rr]=mean
+               quenchFracMemErrBoot[mm,sm,rr]=sigma
+            endif else begin
+               quenchFracMem[mm,sm,rr]=!values.f_nan
+               quenchFracMemBoot[mm,sm,rr]=!values.f_nan
+               quenchFracMemErrBoot[mm,sm,rr]=!values.f_nan
+            endelse
+         endfor
+
          memSM[sm,rr]=alog10(mean(10.^(acs[mem].kevin_mstar)))
          memSMLo[sm,rr]=memSM[sm,rr]-smbins[sm]
          memSMHi[sm,rr]=smbins[sm+1]-memSM[sm,rr]
          memR[sm,rr]=mean(acs[mem].dist_bcg_r200)
          memRLo[sm,rr]=memR[sm,rr]-rbins[rr]
          memRHi[sm,rr]=rbins[rr+1]-memR[sm,rr]
-      endif
+      endif else begin
+         morphFracMem[*,sm,rr]=!values.f_nan
+         morphFracMemBoot[*,sm,rr]=!values.f_nan
+         morphFracMemErrBoot[*,sm,rr]=!values.f_nan
 
+         quenchFracMem[*,sm,rr]=!values.f_nan
+         quenchFracMemBoot[*,sm,rr]=!values.f_nan
+         quenchFracMemErrBoot[*,sm,rr]=!values.f_nan
+      endelse
    endfor
 endfor
 
@@ -260,47 +313,37 @@ yspace=0.07
 xsymoffset=0.05
 ysymoffset=0.02
 
-groupsym=4
-fieldsym=8
-rColors=[!magenta,!darkorange,!darkgreen,!purple]
-smColors=[!darkred,!darkgreen,!purple,!orange]
-fieldColor=!black
+groupsym=[0,8,4] ; circle, square, triangle
+smColors=replicate(!black,nsmbins)
+morphColors=[!darkred,!darkgreen,!purple,!orange]
+morphOffsets=[-1,0,1]*0.03
 
 ; QUENCHING PLOT
-device,filename=plotDir+'quenchr'+plot_suffix+'.eps',/color,/helvetica,xsize=10,ysize=4,/inches,/encapsul
+device,filename=plotDir+'quenchr'+plot_suffix+color_suffix+'.eps',/color,/helvetica,xsize=10,ysize=4,/inches,/encapsul
 multiplot,/default
-multiplot,[nsmbins,1],mxtitle=textoidl('Group-centric Distance (R/R_{200c})'),mxtitsize=1.4,mxtitoffset=0.5,mytitle='Red Fraction',mytitsize=1.4,mytitoffset=0,/rowmajor
+multiplot,[nsmbins,1],mxtitle=textoidl('Group-centric Distance (R/R_{200c})'),mxtitsize=1.4,mxtitoffset=0.5,mytitle='Quenched Fraction',mytitsize=1.4,mytitoffset=0,/rowmajor
 
 for sm=0,nsmbins-1 do begin
    ; top row - binned
    plot,xr,yr,xstyle=1,ystyle=1,/nodata,ytitle=ytitle,xticks=xticks,xtickv=xtickv,xtickname=xticknames,xminor=4
    xyouts,xtext,ytext,smNames[sm],/data,color=smColors[sm]
 
-   plotsym,groupsym,thick=3
-   oploterror,memR[sm,*],quenchFracMem[sm,*],memRLo[sm,*],quenchFracMemErrBoot[sm,*],psym=8,color=smColors[sm],linestyle=0,errcolor=smColors[sm],errstyle=0,errthick=3,/lobar
-   oploterror,memR[sm,*],quenchFracMem[sm,*],memRHi[sm,*],quenchFracMemErrBoot[sm,*],psym=8,color=smColors[sm],linestyle=0,errcolor=smColors[sm],errstyle=0,errthick=3,/hibar
-   ; plot centrals
-   plotsym,groupsym,thick=3,/fill
-   if(finite(quenchFracCenErrBoot[sm])) then oploterror,[0],[quenchFracCen[sm]],[quenchFracCenErrBoot[sm]],psym=8,color=smColors[sm],errcolor=smColors[sm],errstyle=0,errthick=3
-      
-   oplot,!x.crange,replicate(quenchFracField[sm,0],2),linestyle=1,color=smColors[sm]
+   for mm=0,nMorph-1 do begin
+      ; plot centrals
+      plotsym,groupsym[mm],thick=3,/fill
+      if(finite(quenchFracCenErrBoot[mm,sm])) then oploterror,[0],[quenchFracCen[mm,sm]],[quenchFracCenErrBoot[mm,sm]],psym=8,color=morphColors[mm],errcolor=morphColors[mm],errstyle=0,errthick=3
 
-   ; fill in points with SM completeness
-   for rr=0,nrbins-1 do begin
-      plotsym,groupsym,thick=3,fill=fillArr[sm]
-      oplot,[memR[sm,rr]],[quenchFracMem[sm,rr]],psym=8,color=smColors[sm]
+      ; satellites
+      if NOT(fillArr[sm]) then plotsym,groupsym[mm],thick=3 ; unfilled
+;      oploterror,memR[sm,*],quenchFracMem[sm,*],memRLo[sm,*],quenchFracMemErrBoot[sm,*],psym=8,color=smColors[sm],linestyle=0,errcolor=smColors[sm],errstyle=0,errthick=3,/lobar
+;      oploterror,memR[sm,*],quenchFracMem[sm,*],memRHi[sm,*],quenchFracMemErrBoot[sm,*],psym=8,color=smColors[sm],linestyle=0,errcolor=smColors[sm],errstyle=0,errthick=3,/hibar
+      if(total(finite(quenchFracMemErrBoot[mm,sm,*])) GT 0) then $
+         oploterror,memR[sm,*]+morphOffsets[mm],quenchFracMem[mm,sm,*],quenchFracMemErrBoot[mm,sm,*],psym=-8,color=morphColors[mm],linestyle=0,errcolor=morphColors[mm],errstyle=0,errthick=3
+
+      ; field
+      if(finite(quenchFracField[mm,sm])) then $
+         oplot,!x.crange,replicate(quenchFracField[mm,sm],2),linestyle=1,color=morphColors[mm]
    endfor
-   
-;   if(rr EQ 0) then begin
-;      xlegend=!x.crange[0]+0.88*(!x.crange[1]-!x.crange[0])
-;      ylegend=!y.crange[0]+0.05*(!y.crange[1]-!y.crange[0])
-;      xyouts,xlegend-xsymoffset,ylegend+1*yspace,'Field',alignment=1,charsize=1
-;      xyouts,xlegend-xsymoffset,ylegend+0*yspace,'Group Members',alignment=1,charsize=1
-;      plotsym,fieldsym,/fill
-;      oplot,[xlegend+xsymoffset],[ylegend+1*yspace+ysymoffset],psym=8,color=fieldColor
-;      plotsym,groupsym,/fill
-;      oplot,[xlegend+xsymoffset],[ylegend+0*yspace+ysymoffset],psym=8,color=smColors[sm]
-;   endif
 
    multiplot
 endfor
@@ -309,7 +352,7 @@ device,/close
 
 
 ; MORPHOLOGY PLOT
-device,filename=plotDir+'morphr'+plot_suffix+'.eps',/color,/helvetica,xsize=10,ysize=4,/inches,/encapsul
+device,filename=plotDir+'morphr'+plot_suffix+color_suffix+'.eps',/color,/helvetica,xsize=10,ysize=4,/inches,/encapsul
 multiplot,/default
 multiplot,[nsmbins,1],mxtitle=textoidl('Group-centric Distance (R/R_{200c})'),mxtitsize=1.4,mxtitoffset=0.5,mytitle='Morphological Fraction',mytitsize=1.4,mytitoffset=0,/rowmajor
 
@@ -318,31 +361,22 @@ for sm=0,nsmbins-1 do begin
    plot,xr,yr,xstyle=1,ystyle=1,/nodata,ytitle=ytitle,xticks=xticks,xtickv=xtickv,xtickname=xticknames,xminor=4
    xyouts,xtext,ytext,smNames[sm],/data,color=smColors[sm]
 
-   plotsym,groupsym,thick=3
-   oploterror,memR[sm,*],ellFracMem[sm,*],memRLo[sm,*],ellFracMemErrBoot[sm,*],psym=8,color=smColors[sm],linestyle=0,errcolor=smColors[sm],errstyle=0,errthick=3,/lobar
-   oploterror,memR[sm,*],ellFracMem[sm,*],memRHi[sm,*],ellFracMemErrBoot[sm,*],psym=8,color=smColors[sm],linestyle=0,errcolor=smColors[sm],errstyle=0,errthick=3,/hibar
-   ; plot centrals
-   plotsym,groupsym,thick=3,/fill
-   if(finite(ellFracCenErrBoot[sm])) then oploterror,[0],[ellFracCen[sm]],[ellFracCenErrBoot[sm]],psym=8,color=smColors[sm],errcolor=smColors[sm],errstyle=0,errthick=3
-      
-   oplot,!x.crange,replicate(ellFracField[sm,0],2),linestyle=1,color=smColors[sm]
+   for mm=0,nMorph-1 do begin
+      ; plot centrals
+      plotsym,groupsym[mm],thick=3,/fill
+      if(finite(morphFracCenErrBoot[mm,sm])) then oploterror,[0],[morphFracCen[mm,sm]],[morphFracCenErrBoot[mm,sm]],psym=8,color=morphColors[mm],errcolor=morphColors[mm],errstyle=0,errthick=3
 
-   ; fill in points with SM completeness
-   for rr=0,nrbins-1 do begin
-      plotsym,groupsym,thick=3,fill=fillArr[sm]
-      oplot,[memR[sm,rr]],[ellFracMem[sm,rr]],psym=8,color=smColors[sm]
+      ; satellites
+      if NOT(fillArr[sm]) then plotsym,groupsym[mm],thick=3 ; unfilled
+;      oploterror,memR[sm,*],morphFracMem[mm,sm,*],memRLo[sm,*],morphFracMemErrBoot[mm,sm,*],psym=8,color=smColors[sm],linestyle=0,errcolor=smColors[sm],errstyle=0,errthick=3,/lobar
+;      oploterror,memR[sm,*],morphFracMem[mm,sm,*],memRHi[sm,*],morphFracMemErrBoot[mm,sm,*],psym=8,color=smColors[sm],linestyle=0,errcolor=smColors[sm],errstyle=0,errthick=3,/hibar
+      if(total(finite(morphFracMem[mm,sm,*])) GT 0) then $
+         oploterror,memR[sm,*]+morphOffsets[mm],morphFracMem[mm,sm,*],morphFracMemErrBoot[mm,sm,*],psym=-8,color=morphColors[mm],linestyle=0,errcolor=morphColors[mm],errstyle=0,errthick=3
+      
+      ; field
+      if(finite(morphFracField[mm,sm])) then $
+         oplot,!x.crange,replicate(morphFracField[mm,sm],2),linestyle=1,color=morphColors[mm]
    endfor
-   
-;   if(rr EQ 0) then begin
-;      xlegend=!x.crange[0]+0.88*(!x.crange[1]-!x.crange[0])
-;      ylegend=!y.crange[0]+0.05*(!y.crange[1]-!y.crange[0])
-;      xyouts,xlegend-xsymoffset,ylegend+1*yspace,'Field',alignment=1,charsize=1
-;      xyouts,xlegend-xsymoffset,ylegend+0*yspace,'Group Members',alignment=1,charsize=1
-;      plotsym,fieldsym,/fill
-;      oplot,[xlegend+xsymoffset],[ylegend+1*yspace+ysymoffset],psym=8,color=fieldColor
-;      plotsym,groupsym,/fill
-;      oplot,[xlegend+xsymoffset],[ylegend+0*yspace+ysymoffset],psym=8,color=smColors[sm]
-;   endif
 
    multiplot
 endfor
@@ -350,7 +384,5 @@ multiplot,/reset
 device,/close
 
 !p.multi=0
-
-stop
 
 end
