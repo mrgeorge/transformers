@@ -13,10 +13,13 @@ zBins=np.arange(0.,1.,zStep)
 minMh=12.0
 maxMh=15.0
 
+morphTypes=["all","early","edisk","ldisk","xdisk","irr"]
+
 for zz in zBins:
-    minZ=zz
-    maxZ=minZ+zStep
-    plotFile=plotDir+"candy_z"+re.sub("\D","",str(minZ))+"_"+re.sub("\D","",str(maxZ))+"_m"+re.sub("\D","",str(minMh))+"_"+re.sub("\D","",str(maxMh))+".pdf"
-    print plotFile
-    plotgalSMvR.main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh)
+    for morph in morphTypes:
+        minZ=zz
+        maxZ=minZ+zStep
+        plotFile=plotDir+"candy_z"+re.sub("\D","",str(minZ))+"_"+re.sub("\D","",str(maxZ))+"_m"+re.sub("\D","",str(minMh))+"_"+re.sub("\D","",str(maxMh))+"_"+morph+".pdf"
+        print plotFile
+        plotgalSMvR.main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh, morph)
 

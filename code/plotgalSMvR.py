@@ -39,13 +39,32 @@ def readData(imListFile):
 
     return data
 
-def selectData(data, minZ, maxZ, minMh, maxMh):
+def selectData(data, minZ, maxZ, minMh, maxMh, morph):
 
     sel=((data['flag'] == 1) &    # only include flag=1
          (data['z'] > minZ) &    # make a tighter z cut
          (data['z'] < maxZ) &
          (data['mhalo'] > minMh) &
          (data['mhalo'] < maxMh))
+    data=data[sel]
+
+    if(morph == "all"):
+       return data
+    elif(morph == "early"):
+       sel=((data['ztype'] == 1) |
+            ((data['ztype'] == 2) & (data['zbulge'] == 0)))
+    elif(morph == "edisk"):
+       sel=((data['ztype'] == 2) &
+            (data['zbulge'] == 1))
+    elif(morph == "ldisk"):
+       sel=((data['ztype'] == 2) &
+            (data['zbulge'] == 2))
+    elif(morph == "xdisk"):
+       sel=((data['ztype'] == 2) &
+            (data['zbulge'] == 3))
+    elif(morph == "irr"):
+       sel=(data['ztype'] == 3)
+
     data=data[sel]
 
     return data
@@ -58,6 +77,23 @@ def scatterCentrals(data, minR):
     data['r'][cen] += offset
 
     return data
+
+def setMorphTitle(plt, morph):
+    # print morphological category plotted
+    if(morph == "all"):
+       morphStr="All Morphologies"
+    elif(morph == "early"):
+       morphStr="Early Types"
+    elif(morph == "edisk"):
+       morphStr="Early Disks"
+    elif(morph == "ldisk"):
+       morphStr="Late Disks"
+    elif(morph == "xdisk"):
+       morphStr="Extreme Disks"
+    elif(morph == "irr"):
+       morphStr="Irregulars"
+       
+    plt.title(morphStr)
 
 def oplotScaleBar(plt, xBar, yBar, zMed, imSize, imSizePlot):
     # add scale to show galaxy sizes
@@ -89,7 +125,7 @@ def oplotCentralRegion(plt, minR, maxR, minSM, maxSM, smLimit):
     # add shaded region on left to show central area
     plt.fill_betweenx(((smLimit-minSM)/(maxSM-minSM),1),0,(0-minR)/(maxR-minR),color='gray',alpha=0.1)
 
-def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM):
+def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph):
     # setup plot of SM vs R with colorbar
     
     # use helvetica and latex
@@ -119,6 +155,9 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM):
     yBar=0.82
     oplotScaleBar(plt, xBar, yBar, zMed, imSize, imSizePlot)
     
+    # print morph type (title)
+    setMorphTitle(plt, morph)
+
     # bottom shaded region for SM limit
     smLimit=getSMLimit(maxZ)
     oplotSMLimit(plt, smLimit, minSM, maxSM)
@@ -279,7 +318,7 @@ def oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, pivot, cmin, cmax, 
     plt.ylim((minColor,maxColor))
 
     
-def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh):
+def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh, morph):
 
     # set plot ranges
     minR=-0.15
@@ -291,7 +330,7 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh):
 
     # read data
     data=readData(imListFile)
-    data=selectData(data, minZ, maxZ, minMh, maxMh) # cut on flag=1, z-range, halo mass
+    data=selectData(data, minZ, maxZ, minMh, maxMh, morph) # cut on flag=1, z-range, halo mass, morph
     if(data.size == 0):
         print "no data in range"
         return
@@ -323,7 +362,7 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh):
     cmax=1.0 # 1 -> pure gray/black, lower to leave some color
 
     # set up the plot
-    plt,ax1,gs=setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM)
+    plt,ax1,gs=setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph)
 
     # record stats of plotted galaxies
     nCen=0 # number of centrals plotted
@@ -370,7 +409,7 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh):
 if __name__ == '__main__':
     import sys
     if(len(sys.argv)!=8):
-        print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile minZ maxZ"
+        print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile minZ maxZ morph"
         exit
 
     imDir=sys.argv[1]
@@ -380,6 +419,7 @@ if __name__ == '__main__':
     maxZ=float(sys.argv[5])
     minMh=float(sys.argv[6])
     maxMh=float(sys.argv[7])
+    morph=float(sys.argv[8])
 
-    main(imDir, imListFile, plotFile, minZ, maxZ)
+    main(imDir, imListFile, plotFile, minZ, maxZ, morph)
     
