@@ -68,6 +68,7 @@ def census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh):
                     censel=((halomass >= minmh) &
                             (halomass < maxmh) &
                             (acs['MMGG_SCALE_SPECZ'] == 1) &
+                            (acs['GROUP_FLAG_BEST_SPECZ'] == 1) &
                             (acs['KEVIN_MSTAR'] >= smbins[sm]) &
                             (acs['KEVIN_MSTAR'] < smbins[sm+1]) &
                             (acs['ZPHOT'] >= zbins[zz]) &
@@ -93,6 +94,8 @@ def census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh):
                         satsel=((halomass >= minmh) &
                                 (halomass < maxmh) &
                                 (acs['MMGG_SCALE_SPECZ'] == 0) &
+                                (acs['P_MEM_BEST_SPECZ'] >= 0.5) &
+                                (acs['GROUP_FLAG_BEST_SPECZ'] == 1) &
                                 (acs['KEVIN_MSTAR'] >= smbins[sm]) &
                                 (acs['KEVIN_MSTAR'] < smbins[sm+1]) &
                                 (acs['ZPHOT'] >= zbins[zz]) &
@@ -154,8 +157,13 @@ def bootfrac(numerator,denominator,nSample=500):
     if(numerator > denominator):
         print "Error in bootfrac: numerator > denominator"
 
+    if(denominator == 0):
+         print "Warning in bootfrac: denominator == 0"
+         return -1
+
     if(denominator < nSample ** (1./denominator)):
-        print "Error in bootfrac: too few elements"
+        print "Warning in bootfrac: too few elements"
+        return -1
         
     arr=np.concatenate((np.ones(numerator),np.zeros(denominator-numerator)))
     sel=np.random.random_integers(0,denominator-1,(nSample,denominator))
@@ -165,15 +173,18 @@ def bootfrac(numerator,denominator,nSample=500):
 
     return bootErr
 
-def plotrad(sat,sm,zz,rbins):
+def getCMPop(arr,sm,zz):
+    tot=sliceArr(arr,sm=sm,zz=zz,cc=-2,mm=-2,rr=-1)
+    rearly=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=0,rr=-1)
+    redisk=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=1,rr=-1)
+    rldisk=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=2,rr=-1)
+    bearly=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=0,rr=-1)
+    bedisk=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=1,rr=-1)
+    bldisk=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=2,rr=-1)
 
-    tot=sliceArr(sat,sm=sm,zz=zz,cc=-2,mm=-2,rr=-1)
-    rearly=sliceArr(sat,sm=sm,zz=zz,cc=1,mm=0,rr=-1)
-    redisk=sliceArr(sat,sm=sm,zz=zz,cc=1,mm=1,rr=-1)
-    rldisk=sliceArr(sat,sm=sm,zz=zz,cc=1,mm=2,rr=-1)
-    bearly=sliceArr(sat,sm=sm,zz=zz,cc=0,mm=0,rr=-1)
-    bedisk=sliceArr(sat,sm=sm,zz=zz,cc=0,mm=1,rr=-1)
-    bldisk=sliceArr(sat,sm=sm,zz=zz,cc=0,mm=2,rr=-1)
+    return (tot,rearly,redisk,rldisk,bearly,bedisk,bldisk)
+
+def getCMErr(tot,rearly,redisk,rldisk,bearly,bedisk,bldisk):
 
     vboot=np.vectorize(bootfrac)
 
@@ -184,6 +195,13 @@ def plotrad(sat,sm,zz,rbins):
     bediskerr=vboot(bedisk,tot)
     bldiskerr=vboot(bldisk,tot)
 
+    return (rearlyerr,rediskerr,rldiskerr,bearlyerr,bediskerr,bldiskerr)
+
+def plotSatRad(sat,sm,zz,rbins):
+
+    tot,rearly,redisk,rldisk,bearly,bedisk,bldisk=getCMPop(sat,sm,zz)
+    rearlyerr,rediskerr,rldiskerr,bearlyerr,bediskerr,bldiskerr=getCMErr(tot,rearly,redisk,rldisk,bearly,bedisk,bldisk)
+
     rad=rbins[:-1]+0.5*(rbins[1]-rbins[0])
 
     # use helvetica and latex
@@ -193,22 +211,63 @@ def plotrad(sat,sm,zz,rbins):
     plt.rc('axes',linewidth=1.5)
 
     plt.xlabel(r'R/R$_{200{\rm c}}$',fontsize='medium')
-    plt.ylabel(r'Fraction of satellites $|_{M_{\star},z}$',fontsize='medium')
-    plt.xlim((0,1))
-    plt.ylim((0,0.5))
+    plt.ylabel(r'Fraction $|_{\rm M_{\star},z}$',fontsize='medium')
+    plt.xlim((-0.05,1.05))
+    plt.ylim((-0.01,0.8))
 
-    plt.errorbar(rad,rearly/tot,yerr=rearlyerr,color='red')
-    plt.errorbar(rad,redisk/tot,yerr=rediskerr,color='orange')
-    plt.errorbar(rad,rldisk/tot,yerr=rldiskerr,color='yellow')
-    plt.errorbar(rad,bearly/tot,yerr=bearlyerr,color='green')
-    plt.errorbar(rad,bedisk/tot,yerr=bediskerr,color='blue')
-    plt.errorbar(rad,bldisk/tot,yerr=bldiskerr,color='violet')
+    ms=10
+    lw=3
+    plt.errorbar(rad,rearly/tot,yerr=rearlyerr,color='red',marker='o',ms=ms,ls='-',lw=lw,label='Red Spheroidal')
+    plt.errorbar(rad,redisk/tot,yerr=rediskerr,color='orangered',marker='p',ms=ms,ls='--',lw=lw,label='Red Bulge+Disk')
+    plt.errorbar(rad,rldisk/tot,yerr=rldiskerr,color='salmon',marker='<',ms=ms,ls=':',lw=lw,label='Red Disk')
+    plt.errorbar(rad,bearly/tot,yerr=bearlyerr,color='darkblue',marker='o',ms=ms,ls='-',lw=lw,label='Blue Spheroidal')
+    plt.errorbar(rad,bedisk/tot,yerr=bediskerr,color='dodgerblue',marker='p',ms=ms,ls='--',lw=lw,label='Blue Bulge+Disk')
+    plt.errorbar(rad,bldisk/tot,yerr=bldiskerr,color='skyblue',marker='<',ms=ms,ls=':',lw=lw,label='Blue Disk')
+
+def oplotField(field,sm,zz):
+
+     tot,rearly,redisk,rldisk,bearly,bedisk,bldisk=getCMPop(field,sm,zz)
+     rearlyerr,rediskerr,rldiskerr,bearlyerr,bediskerr,bldiskerr=getCMErr(tot,rearly,redisk,rldisk,bearly,bedisk,bldisk)
+
+     fieldRad=1.0
+
+     ms=10
+     plt.errorbar(fieldRad,rearly/tot,yerr=rearlyerr,color='red',marker='o',ms=ms)
+     plt.errorbar(fieldRad,redisk/tot,yerr=rediskerr,color='orangered',marker='p',ms=ms)
+     plt.errorbar(fieldRad,rldisk/tot,yerr=rldiskerr,color='salmon',marker='<',ms=ms)
+     plt.errorbar(fieldRad,bearly/tot,yerr=bearlyerr,color='darkblue',marker='o',ms=ms)
+     plt.errorbar(fieldRad,bedisk/tot,yerr=bediskerr,color='dodgerblue',marker='p',ms=ms)
+     plt.errorbar(fieldRad,bldisk/tot,yerr=bldiskerr,color='skyblue',marker='<',ms=ms)
+
+def oplotCen(cen,sm,zz):
+
+     tot,rearly,redisk,rldisk,bearly,bedisk,bldisk=getCMPop(cen,sm,zz)
+     rearlyerr,rediskerr,rldiskerr,bearlyerr,bediskerr,bldiskerr=getCMErr(tot,rearly,redisk,rldisk,bearly,bedisk,bldisk)
+
+     if(np.min(rearlyerr) > 0.):
+          cenRad=0.0
+          ms=10
+          plt.errorbar(cenRad,rearly/tot,yerr=rearlyerr,color='red',marker='o',ms=ms)
+          plt.errorbar(cenRad,redisk/tot,yerr=rediskerr,color='orangered',marker='p',ms=ms)
+          plt.errorbar(cenRad,rldisk/tot,yerr=rldiskerr,color='salmon',marker='<',ms=ms)
+          plt.errorbar(cenRad,bearly/tot,yerr=bearlyerr,color='darkblue',marker='o',ms=ms)
+          plt.errorbar(cenRad,bedisk/tot,yerr=bediskerr,color='dodgerblue',marker='p',ms=ms)
+          plt.errorbar(cenRad,bldisk/tot,yerr=bldiskerr,color='skyblue',marker='<',ms=ms)
 
 def setTitle(smbins,zbins,sm,zz):
      smstr=r"log(M$_{\star}$/M$_{\odot}$)=["+str(smbins[sm])+", "+str(smbins[sm+1])+")"
      zstr=r"z=["+str(zbins[zz])+", "+str(zbins[zz+1])+")"
      plt.title(r"{}; {}".format(smstr,zstr))
 
+def plotLegend():
+#     plt.legend(('Red Spheroidal','Red Bulge+Disk','Red Disk','Blue Spheroidal','Blue Bulge+Disk','Blue Disk'))
+     plt.legend(prop={'size':12},numpoints=1,loc=9)
+
+def readCatalogs(acsFile,groupFile):
+    acs=fitsio.read(acsFile,ext=1)
+    group=fitsio.read(groupFile,ext=1)
+    return (acs,group)
+    
 # MAIN - if called from command line
 if __name__ == '__main__':
 
@@ -217,8 +276,9 @@ if __name__ == '__main__':
     minmh=13.6
     maxmh=14.0
 
-    acs=fitsio.read("~/data/cosmos/code/lensing18_20110914.fits",ext=1)
-    group=fitsio.read("~/data/cosmos/code/group5_20110914.fits",ext=1)
+    acsFile="~/data/cosmos/code/lensing18_20110914.fits"
+    groupFile="~/data/cosmos/code/group5_20110914.fits"
+    acs,group=readCatalogs(acsFile,groupFile)
     acs,group=cleanCatalogs(acs,group,minz,maxz)
 
     halomass=assignHaloMass(acs,group)
@@ -226,11 +286,15 @@ if __name__ == '__main__':
 
     smbins=np.array([9.8,10.3,10.7,11.5])
     zbins=np.array([0.2,0.8,1.0])
+    complete=np.array([[1,0],[1,1],[1,1]]) # update by hand with smbins, zbins
+#    smbins=np.array([10.3,12.0])
+#    zbins=np.array([0.2,1.0])
+#    complete=np.array([[1]])
+
     cbins=np.array([-1.,3.5,7.])
     mbins=np.array([0.5,1.5,2.5,3.5])
     rbins=np.array([0.01,0.33,0.66,1.0])
 
-    complete=np.array([[1,0],[1,1],[1,1]]) # update by hand with smbins, zbins
 
     cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh)
 
@@ -239,7 +303,10 @@ if __name__ == '__main__':
               if(complete[sm,zz]==1):
                    plotFile="satrad_sm{}-{}_z{}-{}.pdf".format(smbins[sm],smbins[sm+1],zbins[zz],zbins[zz+1])
 
-                   plotrad(sat,sm,zz,rbins)
+                   plotSatRad(sat,sm,zz,rbins)
                    setTitle(smbins,zbins,sm,zz)
+                   oplotField(field,sm,zz)
+                   oplotCen(cen,sm,zz)
+                   plotLegend()
                    plt.savefig(plotFile)
 
