@@ -2,6 +2,9 @@
 
 import fitsio
 import numpy as np
+import matplotlib
+matplotlib.use('Agg') # must appear before importing pyplot to get plots w/o GUI
+import matplotlib.pyplot as plt
 
 def cleanCatalogs(acs,group,minz,maxz):
 
@@ -109,90 +112,102 @@ def sliceArr(arr,sm=-1,zz=-1,cc=-1,mm=-1,rr=-1):
 # return an array of reduced dimensions
 # positive inputs slice to include only that bin
 # -1 leaves the dimension intact
+# -2 sums over the dimension
 
-    if(rr >= 0 & arr.ndim < 5):
-        print "Error in sliceArr: can't cut on r"
+    ndim=arr.ndim
+    nslice=(sm>=0)+(zz>=0)+(cc>=0)+(mm>=0)+(rr>=0)
+    nsum=(sm==-2)+(zz==-2)+(cc==-2)+(mm==-2)+(rr==-2)
 
-    if(sm >= 0):
-        arr=arr[sm]
-        if(zz >= 0):
-            arr=arr[zz]
-            if(cc >= 0):
-                arr=arr[cc]
-                if(mm >= 0):
-                    arr=arr[mm]
-                    if(rr >= 0):
-                        arr=arr[rr]
-                # mm == -1
-                elif(rr >= 0):
-                    arr=arr[:][rr]
-            # cc == -1
-            elif(mm >= 0):
-                arr=arr[:][mm]
-                if(rr >= 0):
-                    arr=arr[:][rr]
-            # cc,mm == -1
-            elif(rr >= 0):
-                arr=arr[:][:][rr]
-        # zz == -1
-        elif(cc >= 0):
-            arr=arr[:][cc]
-            if(mm >= 0):
-                arr=arr[:][mm]
-                if(rr >= 0):
-                    arr=arr[:][rr]
-            # zz,mm == -1
-            elif(rr >= 0):
-                arr=arr[:][:][rr]
-        # zz,cc == -1
-        elif(mm >= 0):
-            arr=arr[:][:][mm]
-            if(rr >= 0):
-                arr=arr[:][:][rr]
-        # zz,cc,mm == -1
-        elif(rr >= 0):
-            arr=arr[:][:][:][rr]
-    # sm == -1
-    elif(zz >= 0):
-        arr=arr[:][zz]
-        if(cc >= 0):
-            arr=arr[:][cc]
-            if(mm >= 0):
-                arr=arr[:][mm]
-                if(rr >= 0):
-                    arr=arr[:][rr]
-            # sm,mm == -1
-            elif(rr >= 0):
-                arr=arr[:][:][rr]
-        # sm,cc == -1
-        elif(mm >= 0):
-            arr=arr[:][:][mm]
-            if(rr >= 0):
-                arr=arr[:][:][rr]
-        # sm,cc,mm == -1
-        elif(rr >= 0):
-            arr=arr[:][:][:][rr]
-    # sm,zz == -1
-    elif(cc >= 0):
-        arr=arr[:][:][cc]
-        if(mm >= 0):
-            arr=arr[:][:][mm]
-            if(rr >= 0):
-                arr=arr[:][:][rr]
-        # sm,zz,mm == -1
-        elif(rr >= 0):
-            arr=arr[:][:][:][rr]
-    # sm,zz,cc == -1
-    elif(mm >= 0):
-        arr=arr[:][:][:][mm]
-        if(rr >= 0):
-            arr=arr[:][:][:][rr]
-    # sm,zz,cc,mm == -1
-    elif(rr >= 0):
-        arr=arr[:][:][:][:][rr]
+    if((rr != -1) & (ndim < 5)):
+        print "Error in sliceArr: can't slice or sum on r"
+
+    if(nsum == arr.ndim):
+        arr=arr.sum()
+        return arr
+    
+    if(rr == -2):
+        arr=arr.sum(4)
+    if(mm == -2):
+        arr=arr.sum(3)
+    if(cc == -2):
+        arr=arr.sum(2)
+    if(zz == -2):
+        arr=arr.sum(1)
+    if(sm == -2):
+        arr=arr.sum(0)
+
+    if(ndim == 4):
+        ind="{},{},{},{}".format(sm,zz,cc,mm).replace("-1",":").replace("-2,","").replace(",-2","")
+    elif(ndim == 5):
+        ind="{},{},{},{},{}".format(sm,zz,cc,mm,rr).replace("-1",":").replace("-2,","").replace(",-2","")
+
+    command="arr=arr[{}]".format(ind)
+
+    exec(command)
+
+    if(ndim-nslice-nsum == 1):
+        arr=arr.reshape(arr.size)
 
     return arr
 
+def bootfrac(numerator,denominator,nSample=500):
+    if(numerator > denominator):
+        print "Error in bootfrac: numerator > denominator"
+
+    if(denominator < nSample ** (1./denominator)):
+        print "Error in bootfrac: too few elements"
+        
+    arr=np.concatenate((np.ones(numerator),np.zeros(denominator-numerator)))
+    sel=np.random.random_integers(0,denominator-1,(nSample,denominator))
+    avgArr=arr[sel].sum(1)/denominator
+    bootMean=avgArr.mean()
+    bootErr=avgArr.std()
+
+    return bootErr
+
+def plotrad(sat,sm,zz,rbins):
+
+    tot=sliceArr(sat,sm=sm,zz=zz,cc=-2,mm=-2,rr=-1)
+    rearly=sliceArr(sat,sm=sm,zz=zz,cc=1,mm=0,rr=-1)
+    redisk=sliceArr(sat,sm=sm,zz=zz,cc=1,mm=1,rr=-1)
+    rldisk=sliceArr(sat,sm=sm,zz=zz,cc=1,mm=2,rr=-1)
+    bearly=sliceArr(sat,sm=sm,zz=zz,cc=0,mm=0,rr=-1)
+    bedisk=sliceArr(sat,sm=sm,zz=zz,cc=0,mm=1,rr=-1)
+    bldisk=sliceArr(sat,sm=sm,zz=zz,cc=0,mm=2,rr=-1)
+
+    vboot=np.vectorize(bootfrac)
+
+    rearlyerr=vboot(rearly,tot)
+    rediskerr=vboot(redisk,tot)
+    rldiskerr=vboot(rldisk,tot)
+    bearlyerr=vboot(bearly,tot)
+    bediskerr=vboot(bedisk,tot)
+    bldiskerr=vboot(bldisk,tot)
+
+    rad=rbins[:-1]+0.5*(rbins[1]-rbins[0])
+
+    # use helvetica and latex
+    plt.clf()
+    plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'],'size':20})
+    plt.rc('text', usetex=True)
+    plt.rc('axes',linewidth=1.5)
+
+    plt.xlabel(r'R/R$_{200{\rm c}}$',fontsize='medium')
+    plt.ylabel(r'Fraction of satellites $|_{M_{\star},z}$',fontsize='medium')
+    plt.xlim((0,1))
+    plt.ylim((0,0.5))
+
+    plt.errorbar(rad,rearly/tot,yerr=rearlyerr,color='red')
+    plt.errorbar(rad,redisk/tot,yerr=rediskerr,color='orange')
+    plt.errorbar(rad,rldisk/tot,yerr=rldiskerr,color='yellow')
+    plt.errorbar(rad,bearly/tot,yerr=bearlyerr,color='green')
+    plt.errorbar(rad,bedisk/tot,yerr=bediskerr,color='blue')
+    plt.errorbar(rad,bldisk/tot,yerr=bldiskerr,color='violet')
+
+def setTitle(smbins,zbins,sm,zz):
+     smstr=r"log(M$_{\star}$/M$_{\odot}$)=["+str(smbins[sm])+", "+str(smbins[sm+1])+")"
+     zstr=r"z=["+str(zbins[zz])+", "+str(zbins[zz+1])+")"
+     plt.title(r"{}; {}".format(smstr,zstr))
 
 # MAIN - if called from command line
 if __name__ == '__main__':
@@ -218,6 +233,13 @@ if __name__ == '__main__':
     complete=np.array([[1,0],[1,1],[1,1]]) # update by hand with smbins, zbins
 
     cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh)
-    
-    
-    
+
+    for sm in range(smbins.size-1):
+         for zz in range(zbins.size-1):
+              if(complete[sm,zz]==1):
+                   plotFile="satrad_sm{}-{}_z{}-{}.pdf".format(smbins[sm],smbins[sm+1],zbins[zz],zbins[zz+1])
+
+                   plotrad(sat,sm,zz,rbins)
+                   setTitle(smbins,zbins,sm,zz)
+                   plt.savefig(plotFile)
+
