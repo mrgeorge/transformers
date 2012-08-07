@@ -153,7 +153,8 @@ def sliceArr(arr,sm=-1,zz=-1,cc=-1,mm=-1,rr=-1):
 
     return arr
 
-def bootfrac(numerator,denominator,nSample=500):
+def bootfrac(frac,denominator,nSample=500):
+    numerator=frac*denominator
     if(numerator > denominator):
         print "Error in bootfrac: numerator > denominator"
 
@@ -165,7 +166,7 @@ def bootfrac(numerator,denominator,nSample=500):
         print "Warning in bootfrac: too few elements"
         return -1
         
-    arr=np.concatenate((np.ones(numerator),np.zeros(denominator-numerator)))
+    arr=np.concatenate((np.ones(int(numerator)),np.zeros(int(denominator)-int(numerator))))
     sel=np.random.random_integers(0,denominator-1,(nSample,denominator))
     avgArr=arr[sel].sum(1)/denominator
     bootMean=avgArr.mean()
@@ -173,41 +174,31 @@ def bootfrac(numerator,denominator,nSample=500):
 
     return bootErr
 
-def getCMPop(arr,sm,zz):
+def getCMFrac(arr,sm,zz):
     tot=sliceArr(arr,sm=sm,zz=zz,cc=-2,mm=-2,rr=-1)
-    rother=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=0,rr=-1)
     rearly=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=1,rr=-1)
     redisk=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=2,rr=-1)
     rldisk=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=3,rr=-1)
-    bother=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=0,rr=-1)
     bearly=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=1,rr=-1)
     bedisk=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=2,rr=-1)
     bldisk=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=3,rr=-1)
 
-    return (tot,rother,rearly,redisk,rldisk,bother,bearly,bedisk,bldisk)
+    return (1.*rearly/tot,1.*redisk/tot,1.*rldisk/tot,1.*bearly/tot,1.*bedisk/tot,1.*bldisk/tot,tot)
 
-def getCMErr(tot,rother,rearly,redisk,rldisk,bother,bearly,bedisk,bldisk):
+def getCMErr((rearly,redisk,rldisk,bearly,bedisk,bldisk,tot)):
 
     vboot=np.vectorize(bootfrac)
 
-    rothererr=vboot(rother,tot)
     rearlyerr=vboot(rearly,tot)
     rediskerr=vboot(redisk,tot)
     rldiskerr=vboot(rldisk,tot)
-    bothererr=vboot(bother,tot)
     bearlyerr=vboot(bearly,tot)
     bediskerr=vboot(bedisk,tot)
     bldiskerr=vboot(bldisk,tot)
 
-    return (rothererr,rearlyerr,rediskerr,rldiskerr,bothererr,bearlyerr,bediskerr,bldiskerr)
+    return (rearlyerr,rediskerr,rldiskerr,bearlyerr,bediskerr,bldiskerr)
 
-def plotSatRad(sat,sm,zz,rbins):
-
-    tot,rother,rearly,redisk,rldisk,bother,bearly,bedisk,bldisk=getCMPop(sat,sm,zz)
-    rothererr,rearlyerr,rediskerr,rldiskerr,bothererr,bearlyerr,bediskerr,bldiskerr=getCMErr(tot,rother,rearly,redisk,rldisk,bother,bearly,bedisk,bldisk)
-
-    rad=rbins[:-1]+0.5*(rbins[1]-rbins[0])
-
+def setupRadPlot():
     # use helvetica and latex
     plt.clf()
     plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'],'size':20})
@@ -219,57 +210,34 @@ def plotSatRad(sat,sm,zz,rbins):
     plt.xlim((-0.05,1.05))
     plt.ylim((-0.01,0.8))
 
-    ms=10
-    lw=3
-    print tot,rearly/tot,redisk/tot,bldisk/tot
-    plt.errorbar(rad,rearly/tot,yerr=rearlyerr,color='red',marker='o',ms=ms,ls='-',lw=lw,label='Red Spheroidal')
-    plt.errorbar(rad,redisk/tot,yerr=rediskerr,color='orangered',marker='p',ms=ms,ls='--',lw=lw,label='Red Bulge+Disk')
-    plt.errorbar(rad,rldisk/tot,yerr=rldiskerr,color='salmon',marker='<',ms=ms,ls=':',lw=lw,label='Red Disk')
-    plt.errorbar(rad,bearly/tot,yerr=bearlyerr,color='darkblue',marker='o',ms=ms,ls='-',lw=lw,label='Blue Spheroidal')
-    plt.errorbar(rad,bedisk/tot,yerr=bediskerr,color='dodgerblue',marker='p',ms=ms,ls='--',lw=lw,label='Blue Bulge+Disk')
-    plt.errorbar(rad,bldisk/tot,yerr=bldiskerr,color='skyblue',marker='<',ms=ms,ls=':',lw=lw,label='Blue Disk')
 
-def oplotSatCorr(satCorr,sm,zz,rbins):
-    tot,rother,rearly,redisk,rldisk,bother,bearly,bedisk,bldisk=getCMPop(satCorr,sm,zz)
-    rad=rbins[:-1]+0.5*(rbins[1]-rbins[0])
-    ms=100
-    print tot,rearly/tot,redisk/tot,bldisk/tot
-    plt.scatter(rad,rearly/tot,color='red',marker='o',s=ms)
-    plt.scatter(rad,redisk/tot,color='orangered',marker='p',s=ms)
-    plt.scatter(rad,rldisk/tot,color='salmon',marker='<',s=ms)
-    plt.scatter(rad,bearly/tot,color='darkblue',marker='o',s=ms)
-    plt.scatter(rad,bedisk/tot,color='dodgerblue',marker='p',s=ms)
-    plt.scatter(rad,bldisk/tot,color='skyblue',marker='<',s=ms)
+def oplotRad(arr,sm,zz,rad,errflag,labelflag):
 
-def oplotField(field,sm,zz):
-
-     tot,rother,rearly,redisk,rldisk,bother,bearly,bedisk,bldisk=getCMPop(field,sm,zz)
-     rothererr,rearlyerr,rediskerr,rldiskerr,bothererr,bearlyerr,bediskerr,bldiskerr=getCMErr(tot,rother,rearly,redisk,rldisk,bother,bearly,bedisk,bldisk)
-
-     fieldRad=1.0
-
-     ms=10
-     plt.errorbar(fieldRad,rearly/tot,yerr=rearlyerr,color='red',marker='o',ms=ms)
-     plt.errorbar(fieldRad,redisk/tot,yerr=rediskerr,color='orangered',marker='p',ms=ms)
-     plt.errorbar(fieldRad,rldisk/tot,yerr=rldiskerr,color='salmon',marker='<',ms=ms)
-     plt.errorbar(fieldRad,bearly/tot,yerr=bearlyerr,color='darkblue',marker='o',ms=ms)
-     plt.errorbar(fieldRad,bedisk/tot,yerr=bediskerr,color='dodgerblue',marker='p',ms=ms)
-     plt.errorbar(fieldRad,bldisk/tot,yerr=bldiskerr,color='skyblue',marker='<',ms=ms)
-
-def oplotCen(cen,sm,zz):
-
-     tot,rother,rearly,redisk,rldisk,bother,bearly,bedisk,bldisk=getCMPop(cen,sm,zz)
-     rothererr,rearlyerr,rediskerr,rldiskerr,bothererr,bearlyerr,bediskerr,bldiskerr=getCMErr(tot,rother,rearly,redisk,rldisk,bother,bearly,bedisk,bldisk)
-
-     if(np.min(rearlyerr) > 0.): # check that there are enough centrals to get error bars
-          cenRad=0.0
+     yvals=getCMFrac(arr,sm,zz)
+     if(errflag == 1):
+          lw=3
           ms=10
-          plt.errorbar(cenRad,rearly/tot,yerr=rearlyerr,color='red',marker='o',ms=ms)
-          plt.errorbar(cenRad,redisk/tot,yerr=rediskerr,color='orangered',marker='p',ms=ms)
-          plt.errorbar(cenRad,rldisk/tot,yerr=rldiskerr,color='salmon',marker='<',ms=ms)
-          plt.errorbar(cenRad,bearly/tot,yerr=bearlyerr,color='darkblue',marker='o',ms=ms)
-          plt.errorbar(cenRad,bedisk/tot,yerr=bediskerr,color='dodgerblue',marker='p',ms=ms)
-          plt.errorbar(cenRad,bldisk/tot,yerr=bldiskerr,color='skyblue',marker='<',ms=ms)
+          errs=getCMErr(yvals)
+     else:
+          lw=0
+          ms=14
+          errs=np.repeat(None,6)
+
+     if(labelflag == 1):
+          labels=np.array(['Red Spheroidal','Red Bulge+Disk','Red Disk','Blue Spheroidal','Blue Bulge+Disk','Blue Disk'])
+     else:
+          labels=np.repeat(None,6)
+          
+     offsets=np.linspace(-1,1,num=6)*0.025
+     colors=np.array(['red','orangered','salmon','darkblue','dodgerblue','skyblue'])
+     markers=np.tile(['o','p','<'],2)
+     linestyles=np.tile(['-','--',':'],2)
+
+     if((np.min(errs[0]) > 0.) | (errs[0]==None)): # check that there are enough to get error bars
+
+          for ii in range(6):
+               plt.errorbar(rad+offsets[ii],yvals[ii],yerr=errs[ii],color=colors[ii],marker=markers[ii],ms=ms,ls=linestyles[ii],lw=lw,label=labels[ii])
+
 
 def setTitle(smbins,zbins,sm,zz):
      smstr=r"log(M$_{\star}$/M$_{\odot}$)=["+str(smbins[sm])+", "+str(smbins[sm+1])+")"
@@ -290,7 +258,7 @@ def getContamination(rbins):
 # then correct for membership contamination using the typical magnitude in each SM/z/c/m bin
 # ported from IDL version memstat_separability.pro
 
-     magbins=np.array([17,20,21,22.5,24.2])
+     magbins=np.array([17,20.,20.5,21.0,21.5,22.0,22.5,23.0,23.5,24.0,24.2])
      nmagbins=magbins.size-1
      nrbins=rbins.size-1
 
@@ -430,7 +398,9 @@ def contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins):
                          fieldpop=sliceArr(field,sm=sm,zz=zz,cc=cc,mm=mm,rr=-1)
                          fieldfrac=1.*fieldpop/fieldtot
                          for rr in range(nrbins):
-# TO DO - check that magVals extend beyond mags so that edges are properly interpolated
+                              if((mags[sm][zz][cc][mm] > np.max(magVals[:,rr])) |
+                                 (mags[sm][zz][cc][mm] < np.min(magVals[:,rr]))):
+                                   print mags[sm][zz][cc][mm],sm,zz,cc,mm
                               p=np.interp(mags[sm][zz][cc][mm],magVals[:,rr],purity[:,rr])
                               factor=1.-(1-p)*fieldfrac
                               satCorr[sm][zz][cc][mm][rr] *= factor
@@ -442,7 +412,7 @@ if __name__ == '__main__':
 
     minz=0.2
     maxz=1.0
-    minmh=13.6
+    minmh=13.0
     maxmh=14.0
 
     plotDir="../plots/"
@@ -466,6 +436,8 @@ if __name__ == '__main__':
     mbins=np.array([-0.5,0.5,1.5,2.5,3.5])
     rbins=np.array([0.01,0.33,0.66,1.0])
 
+    satRad=rbins[:-1]+0.5*(rbins[1]-rbins[0])
+
 
     cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh)
 
@@ -476,11 +448,11 @@ if __name__ == '__main__':
               if(complete[sm,zz]==1):
                    plotFile=plotDir+"satrad_sm{}-{}_z{}-{}.pdf".format(smbins[sm],smbins[sm+1],zbins[zz],zbins[zz+1])
 
-                   plotSatRad(sat,sm,zz,rbins)
-                   oplotSatCorr(satCorr,sm,zz,rbins)
+                   setupRadPlot()
+                   oplotRad(sat,sm,zz,satRad,1,1)
+                   oplotRad(satCorr,sm,zz,satRad,0,0)
+                   oplotRad(field,sm,zz,1.,1,0)
+                   oplotRad(cen,sm,zz,0.,1,0)
                    setTitle(smbins,zbins,sm,zz)
-                   oplotField(field,sm,zz)
-                   oplotCen(cen,sm,zz)
                    plotLegend()
                    plt.savefig(plotFile)
-
