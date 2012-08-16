@@ -198,29 +198,40 @@ def getCMErr((rearly,redisk,rldisk,bearly,bedisk,bldisk,tot)):
 
     return (rearlyerr,rediskerr,rldiskerr,bearlyerr,bediskerr,bldiskerr)
 
-def setupRadPlot():
+def setupRadPlot(zbins,smbins):
     # use helvetica and latex
     plt.clf()
     plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'],'size':20})
     plt.rc('text', usetex=True)
-    plt.rc('axes',linewidth=1.5)
+    plt.rc('axes',**{'linewidth':1.5,'labelsize':10})
 
-    plt.xlabel(r'R/R$_{200{\rm c}}$',fontsize='medium')
-    plt.ylabel(r'Fraction $|_{\rm M_{\star},z}$',fontsize='medium')
-    plt.xlim((-0.05,1.05))
-    plt.ylim((-0.01,0.8))
+    # make figure with separate panels for SM and z bins with shared axes
+    fig,axarr=plt.subplots(zbins.size-1,smbins.size-1,sharex=True,sharey=True)
+    fig.subplots_adjust(hspace=0,wspace=0)
 
+#    plt.xlabel(r'R/R$_{200{\rm c}}$',fontsize='medium')
+#    plt.ylabel(r'Fraction $|_{\rm M_{\star},z}$',fontsize='medium')
+    fig.text(0.5,0.03,r'R/R$_{200{\rm c}}$',verticalalignment='center',rotation='horizontal',fontsize='medium')
+    fig.text(0.03,0.6,r'Fraction $|_{\rm M_{\star},z}$',horizontalalignment='center',rotation='vertical',fontsize='medium')
+    plt.xlim((-0.1,1.1))
+    plt.ylim((-0.03,0.65))
 
-def oplotRad(arr,sm,zz,rad,errflag,labelflag):
+    # hide x ticks for top plots and y ticks for right plots
+    plt.setp([[a.get_xticklabels() for a in axarr[b,:]] for b in range(0,zbins.size-2)], visible=False)
+    plt.setp([[a.get_yticklabels() for a in axarr[:,b]] for b in range(1,smbins.size-1)], visible=False)
+
+    return axarr
+
+def oplotRad(ax,arr,sm,zz,rad,errflag,labelflag):
 
      yvals=getCMFrac(arr,sm,zz)
      if(errflag == 1):
-          lw=3
-          ms=10
+          lw=2
+          ms=8
           errs=getCMErr(yvals)
      else:
           lw=0
-          ms=14
+          ms=6
           errs=np.repeat(None,6)
 
      if(labelflag == 1):
@@ -236,7 +247,7 @@ def oplotRad(arr,sm,zz,rad,errflag,labelflag):
      if((np.min(errs[0]) > 0.) | (errs[0]==None)): # check that there are enough to get error bars
 
           for ii in range(6):
-               plt.errorbar(rad+offsets[ii],yvals[ii],yerr=errs[ii],color=colors[ii],marker=markers[ii],ms=ms,ls=linestyles[ii],lw=lw,label=labels[ii])
+               ax.errorbar(rad+offsets[ii],yvals[ii],yerr=errs[ii],color=colors[ii],marker=markers[ii],ms=ms,ls=linestyles[ii],lw=lw,label=labels[ii])
 
 
 def setTitle(smbins,zbins,sm,zz):
@@ -246,7 +257,12 @@ def setTitle(smbins,zbins,sm,zz):
 
 def plotLegend():
 #     plt.legend(('Red Spheroidal','Red Bulge+Disk','Red Disk','Blue Spheroidal','Blue Bulge+Disk','Blue Disk'))
-     plt.legend(prop={'size':12},numpoints=1,loc=9)
+     plt.legend(prop={'size':12},numpoints=1,loc='upper right', bbox_to_anchor=(-1.05,0.95))
+
+def hidePanel(ax):
+     ax.set_frame_on(False)
+     ax.get_xaxis().set_visible(False)
+     ax.get_yaxis().set_visible(False)
 
 def readCatalogs(acsFile,groupFile):
     acs=fitsio.read(acsFile,ext=1)
@@ -443,16 +459,19 @@ if __name__ == '__main__':
 
     satCorr=contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins)
 
+    plotFile=plotDir+"satrad.pdf"
+    axarr=setupRadPlot(zbins,smbins)
     for sm in range(smbins.size-1):
          for zz in range(zbins.size-1):
               if(complete[sm,zz]==1):
-                   plotFile=plotDir+"satrad_sm{}-{}_z{}-{}.pdf".format(smbins[sm],smbins[sm+1],zbins[zz],zbins[zz+1])
+                   oplotRad(axarr[zz,sm],sat,sm,zz,satRad,1,1)
+                   oplotRad(axarr[zz,sm],satCorr,sm,zz,satRad,0,0)
+                   oplotRad(axarr[zz,sm],field,sm,zz,1.,1,0)
+                   oplotRad(axarr[zz,sm],cen,sm,zz,0.,1,0)
+#                   setTitle(axarr[zz,sm],smbins,zbins,sm,zz)
 
-                   setupRadPlot()
-                   oplotRad(sat,sm,zz,satRad,1,1)
-                   oplotRad(satCorr,sm,zz,satRad,0,0)
-                   oplotRad(field,sm,zz,1.,1,0)
-                   oplotRad(cen,sm,zz,0.,1,0)
-                   setTitle(smbins,zbins,sm,zz)
-                   plotLegend()
-                   plt.savefig(plotFile)
+              else:
+                   hidePanel(axarr[zz,sm])
+
+    plotLegend()
+    plt.savefig(plotFile)
