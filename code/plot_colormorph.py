@@ -23,10 +23,15 @@ def cleanCatalogs(acs,group,minz,maxz):
 
     return (acs,group)
 
-def assignHaloMass(acs,group):
+def assignHaloMass(acs,group,ztype):
     halomass=np.zeros(acs.size)
+
+    if(ztype=="zb"):
+         groupID="GROUP_ID_BEST_SPECZ"
+    else:
+         groupID="GROUP_ID_BEST"
     for gg in range(group.size):
-        mem=(acs['GROUP_ID_BEST_SPECZ'] == group['ID'][gg])
+        mem=(acs[groupID] == group['ID'][gg])
         halomass[mem]=group['LENSING_M200'][gg]
         
     return halomass
@@ -49,7 +54,7 @@ def assignMorph(zestType,zestBulge):
     # irreg and unclassified remain 0
     return morph
 
-def census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh):
+def census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype):
 
     nSMbins=smbins.size-1
     nzbins=zbins.size-1
@@ -61,27 +66,40 @@ def census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh):
     cen=np.zeros((nSMbins,nzbins,ncbins,nmbins))
     field=np.zeros_like(cen)
 
+    if(ztype=="zb"):
+         mmggScale="MMGG_SCALE_SPECZ"
+         groupFlag="GROUP_FLAG_BEST_SPECZ"
+         zphot="ZPHOT"
+         pMem="P_MEM_BEST_SPECZ"
+         distBCG="DIST_BCG_R200_SPECZ"
+    else:
+         mmggScale="MMGG_SCALE"
+         groupFlag="GROUP_FLAG_BEST"
+         zphot="PHOTOZ_NON_COMB"
+         pMem="P_MEM_BEST"
+         distBCG="DIST_BCG_R200"
+
     for sm in range(nSMbins):
         for zz in range(nzbins):
             for cc in range(ncbins):
                 for mm in range(nmbins):
                     censel=((halomass >= minmh) &
                             (halomass < maxmh) &
-                            (acs['MMGG_SCALE_SPECZ'] == 1) &
-                            (acs['GROUP_FLAG_BEST_SPECZ'] == 1) &
+                            (acs[mmggScale] == 1) &
+                            (acs[groupFlag] == 1) &
                             (acs['KEVIN_MSTAR'] >= smbins[sm]) &
                             (acs['KEVIN_MSTAR'] < smbins[sm+1]) &
-                            (acs['ZPHOT'] >= zbins[zz]) &
-                            (acs['ZPHOT'] < zbins[zz+1]) &
+                            (acs[zphot] >= zbins[zz]) &
+                            (acs[zphot] < zbins[zz+1]) &
                             (acs['MNUV_MR'] >= cbins[cc]) &
                             (acs['MNUV_MR'] < cbins[cc+1]) &
                             (morph >= mbins[mm]) &
                             (morph < mbins[mm+1]))
-                    fieldsel=((acs['P_MEM_BEST_SPECZ'] <= 0) &
+                    fieldsel=((acs[pMem] <= 0) &
                               (acs['KEVIN_MSTAR'] >= smbins[sm]) &
                               (acs['KEVIN_MSTAR'] < smbins[sm+1]) &
-                              (acs['ZPHOT'] >= zbins[zz]) &
-                              (acs['ZPHOT'] < zbins[zz+1]) &
+                              (acs[zphot] >= zbins[zz]) &
+                              (acs[zphot] < zbins[zz+1]) &
                               (acs['MNUV_MR'] >= cbins[cc]) &
                               (acs['MNUV_MR'] < cbins[cc+1]) &
                               (morph >= mbins[mm]) &
@@ -93,19 +111,19 @@ def census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh):
                     for rr in range(nrbins):
                         satsel=((halomass >= minmh) &
                                 (halomass < maxmh) &
-                                (acs['MMGG_SCALE_SPECZ'] == 0) &
-                                (acs['P_MEM_BEST_SPECZ'] >= 0.5) &
-                                (acs['GROUP_FLAG_BEST_SPECZ'] == 1) &
+                                (acs[mmggScale] == 0) &
+                                (acs[pMem] >= 0.5) &
+                                (acs[groupFlag] == 1) &
                                 (acs['KEVIN_MSTAR'] >= smbins[sm]) &
                                 (acs['KEVIN_MSTAR'] < smbins[sm+1]) &
-                                (acs['ZPHOT'] >= zbins[zz]) &
-                                (acs['ZPHOT'] < zbins[zz+1]) &
+                                (acs[zphot] >= zbins[zz]) &
+                                (acs[zphot] < zbins[zz+1]) &
                                 (acs['MNUV_MR'] >= cbins[cc]) &
                                 (acs['MNUV_MR'] < cbins[cc+1]) &
                                 (morph >= mbins[mm]) &
                                 (morph < mbins[mm+1]) &
-                                (acs['DIST_BCG_R200_SPECZ'] >= rbins[rr]) &
-                                (acs['DIST_BCG_R200_SPECZ'] < rbins[rr+1]))
+                                (acs[distBCG] >= rbins[rr]) &
+                                (acs[distBCG] < rbins[rr+1]))
 
                         sat[sm][zz][cc][mm][rr]=len(satsel.nonzero()[0])
 
@@ -156,15 +174,15 @@ def sliceArr(arr,sm=-1,zz=-1,cc=-1,mm=-1,rr=-1):
 def bootfrac(frac,denominator,nSample=500):
     numerator=frac*denominator
     if(numerator > denominator):
-        print "Error in bootfrac: numerator > denominator"
+         print "Error in bootfrac: numerator > denominator"
 
     if(denominator == 0):
          #         print "Warning in bootfrac: denominator == 0"
          return -1
 
     if(denominator < nSample ** (1./denominator)):
-        print "Warning in bootfrac: too few elements"
-        return -1
+         #        print "Warning in bootfrac: too few elements"
+         return -1
         
     arr=np.concatenate((np.ones(int(numerator)),np.zeros(int(denominator)-int(numerator))))
     sel=np.random.random_integers(0,denominator-1,(nSample,denominator))
@@ -227,8 +245,8 @@ def setupRadPlot(zbins,smbins):
 
 #    plt.xlabel(r'R/R$_{200{\rm c}}$',fontsize='medium')
 #    plt.ylabel(r'Fraction $|_{\rm M_{\star},z}$',fontsize='medium')
-    fig.text(0.5,0.03,r'R/R$_{200{\rm c}}$',verticalalignment='center',rotation='horizontal',fontsize='medium')
-    fig.text(0.03,0.6,r'Fraction $|_{\rm M_{\star},z}$',horizontalalignment='center',rotation='vertical',fontsize='medium')
+    fig.text(0.5,0.02,r'R/R$_{200{\rm c}}$',horizontalalignment='center',rotation='horizontal',fontsize='medium')
+    fig.text(0.03,0.5,r'Fraction $|_{\rm M_{\star},z}$',verticalalignment='center',rotation='vertical',fontsize='medium')
     plt.xlim((-0.1,1.1))
     plt.ylim((-0.03,0.68))
 
@@ -268,7 +286,6 @@ def oplotRad(ax,arr,sm,zz,rad,errflag,labelflag):
 
      else:
           print "no errs for errflag={},sm={}, zz={}".format(errflag,sm,zz)
-          print errs
 
 def setSMTitle(ax,smbins,sm):
      smstr=r"log(M$_{\star}$/M$_{\odot}$)=["+str(smbins[sm])+", "+str(smbins[sm+1])+")"
@@ -289,7 +306,7 @@ def plotBamfordLegend():
      # get list of legend entries and reverse them
      fontsize=9
      handles,labels=plt.gca().get_legend_handles_labels()
-     plt.legend(handles[::-1],labels[::-1],title=r'log(M$_{\star}$/M$_{\odot}$) =',prop={'size':fontsize},numpoints=1,loc='best',markerscale=0.7,frameon=False)
+     plt.legend(handles[::-1],labels[::-1],title=r'log(M$_{\star}$/M$_{\odot}$) =',prop={'size':fontsize},numpoints=1,loc='lower left',markerscale=0.7,frameon=False)
      plt.gca().get_legend().get_title().set_fontsize(fontsize)
 
 def hidePanel(axarr,zz,sm):
@@ -337,8 +354,8 @@ def setupBamfordPlot(zbins):
     fig,axarr=plt.subplots(zbins.size-1,2,sharex=True,sharey=True)
     fig.subplots_adjust(hspace=0,wspace=0)
 
-    fig.text(0.5,0.03,r'R/R$_{200{\rm c}}$',verticalalignment='center',rotation='horizontal',fontsize='medium')
-    fig.text(0.03,0.6,r'Fraction $|_{\rm M_{\star},z}$',horizontalalignment='center',rotation='vertical',fontsize='medium')
+    fig.text(0.5,0.02,r'R/R$_{200{\rm c}}$',horizontalalignment='center',rotation='horizontal',fontsize='medium')
+    fig.text(0.03,0.5,r'Fraction $|_{\rm M_{\star},z}$',verticalalignment='center',rotation='vertical',fontsize='medium')
     plt.xlim((-0.1,1.1))
     plt.ylim((-0.03,1.03))
 
@@ -568,6 +585,7 @@ if __name__ == '__main__':
     maxz=1.0
     minmh=13.0
     maxmh=14.0
+    ztype="zb" # use zb for zbest (i.e. specz if available), else zp for photoz only
 
     plotDir="../plots/"
 
@@ -578,7 +596,7 @@ if __name__ == '__main__':
     acs,group=cleanCatalogs(acs,group,minz,maxz)
 
     # assign halo mass and single morph class for each galaxy
-    halomass=assignHaloMass(acs,group)
+    halomass=assignHaloMass(acs,group,ztype)
     morph=assignMorph(acs['ZEST_TYPE'],acs['ZEST_BULGE'])
 
     # setup bins in SM, z, color, morphology, and group-centric radius
@@ -596,15 +614,15 @@ if __name__ == '__main__':
     satRad=rbins[:-1]+0.5*(rbins[1]-rbins[0])
 
     # put galaxies in grid of bins
-    cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh)
+    cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
 
     # apply corrections to the satellite population for contamination from field galaxies
     satCorr=contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins)
 
     # make plot of fraction of color/morph types vs R/R200 with separate panels for each SM, z bin.
-    radPlotFile=plotDir+"satrad_mh{}-{}.pdf".format(minmh,maxmh)
+    radPlotFile=plotDir+"satrad_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
     makeRadPlot(radPlotFile,zbins,smbins,complete,sat,satCorr,field,cen)
 
-    bamfordPlotFile=plotDir+"bamford_mh{}-{}.pdf".format(minmh,maxmh)
+    bamfordPlotFile=plotDir+"bamford_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
     makeBamfordPlot(bamfordPlotFile,zbins,smbins,complete,sat,satCorr,field,cen)
     
