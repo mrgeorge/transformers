@@ -174,36 +174,52 @@ def bootfrac(frac,denominator,nSample=500):
 
     return bootErr
 
-def getCMFrac(arr,sm,zz):
+def getCMFrac(arr,sm,zz,nsplit):
+# return a set of slices of the population census that give relevant population fractions
+# for nsplit=6, return the fractions for each of the color+morph cuts (vs. R)
+# for nsplit=2, return the red fraction and the early type fraction (vs. R)
+
     tot=sliceArr(arr,sm=sm,zz=zz,cc=-2,mm=-2,rr=-1)
-    rearly=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=1,rr=-1)
-    redisk=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=2,rr=-1)
-    rldisk=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=3,rr=-1)
-    bearly=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=1,rr=-1)
-    bedisk=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=2,rr=-1)
-    bldisk=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=3,rr=-1)
 
-    return (1.*rearly/tot,1.*redisk/tot,1.*rldisk/tot,1.*bearly/tot,1.*bedisk/tot,1.*bldisk/tot,tot)
+    if(nsplit==6):
+         rearly=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=1,rr=-1)
+         redisk=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=2,rr=-1)
+         rldisk=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=3,rr=-1)
+         bearly=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=1,rr=-1)
+         bedisk=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=2,rr=-1)
+         bldisk=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=3,rr=-1)
 
-def getCMErr((rearly,redisk,rldisk,bearly,bedisk,bldisk,tot)):
+         return (1.*rearly/tot,1.*redisk/tot,1.*rldisk/tot,1.*bearly/tot,1.*bedisk/tot,1.*bldisk/tot,tot)
+
+    elif(nsplit==2):
+         red=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=-2,rr=-1)
+         early=sliceArr(arr,sm=sm,zz=zz,cc=-2,mm=1,rr=-1)
+
+         return (1.*red/tot,1.*early/tot,tot)
+
+    else: # nsplit != 2 or 6
+         print "Error in getCMFrac: nsplit should = 2 or 6"
+         return -1
+
+def getCMErr(fracs):
 
     vboot=np.vectorize(bootfrac)
 
-    rearlyerr=vboot(rearly,tot)
-    rediskerr=vboot(redisk,tot)
-    rldiskerr=vboot(rldisk,tot)
-    bearlyerr=vboot(bearly,tot)
-    bediskerr=vboot(bedisk,tot)
-    bldiskerr=vboot(bldisk,tot)
+    tot=fracs[-1]
+    errs=np.zeros((len(fracs)-1,tot.size))
+    for ii in range(len(fracs)-1):
+         errs[ii,:]=vboot(fracs[ii],tot)
 
-    return (rearlyerr,rediskerr,rldiskerr,bearlyerr,bediskerr,bldiskerr)
+    return errs
 
 def setupRadPlot(zbins,smbins):
     # use helvetica and latex
     plt.clf()
     plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'],'size':20})
     plt.rc('text', usetex=True)
-    plt.rc('axes',**{'linewidth':1.5,'labelsize':10})
+    plt.rc('axes', linewidth=1.5)
+    plt.rc('xtick',labelsize=12)
+    plt.rc('ytick',labelsize=12)
 
     # make figure with separate panels for SM and z bins with shared axes
     fig,axarr=plt.subplots(zbins.size-1,smbins.size-1,sharex=True,sharey=True)
@@ -214,7 +230,7 @@ def setupRadPlot(zbins,smbins):
     fig.text(0.5,0.03,r'R/R$_{200{\rm c}}$',verticalalignment='center',rotation='horizontal',fontsize='medium')
     fig.text(0.03,0.6,r'Fraction $|_{\rm M_{\star},z}$',horizontalalignment='center',rotation='vertical',fontsize='medium')
     plt.xlim((-0.1,1.1))
-    plt.ylim((-0.03,0.65))
+    plt.ylim((-0.03,0.68))
 
     # hide x ticks for top plots and y ticks for right plots
     plt.setp([[a.get_xticklabels() for a in axarr[b,:]] for b in range(0,zbins.size-2)], visible=False)
@@ -224,7 +240,8 @@ def setupRadPlot(zbins,smbins):
 
 def oplotRad(ax,arr,sm,zz,rad,errflag,labelflag):
 
-     yvals=getCMFrac(arr,sm,zz)
+     nsplit=6
+     yvals=getCMFrac(arr,sm,zz,nsplit)
      if(errflag == 1):
           lw=2
           ms=8
@@ -232,37 +249,158 @@ def oplotRad(ax,arr,sm,zz,rad,errflag,labelflag):
      else:
           lw=0
           ms=6
-          errs=np.repeat(None,6)
+          errs=np.repeat(None,nsplit)
 
      if(labelflag == 1):
           labels=np.array(['Red Spheroidal','Red Bulge+Disk','Red Disk','Blue Spheroidal','Blue Bulge+Disk','Blue Disk'])
      else:
-          labels=np.repeat(None,6)
+          labels=np.repeat(None,nsplit)
           
-     offsets=np.linspace(-1,1,num=6)*0.025
+     offsets=np.linspace(-1,1,num=nsplit)*0.025
      colors=np.array(['red','orangered','salmon','darkblue','dodgerblue','skyblue'])
      markers=np.tile(['o','p','<'],2)
      linestyles=np.tile(['-','--',':'],2)
 
-     if((np.min(errs[0]) > 0.) | (errs[0]==None)): # check that there are enough to get error bars
+     if((np.min(errs) >= 0.) | (errs[0]==None)): # check that there are enough to get error bars
 
-          for ii in range(6):
+          for ii in range(nsplit):
                ax.errorbar(rad+offsets[ii],yvals[ii],yerr=errs[ii],color=colors[ii],marker=markers[ii],ms=ms,ls=linestyles[ii],lw=lw,label=labels[ii])
 
+     else:
+          print "no errs for errflag={},sm={}, zz={}".format(errflag,sm,zz)
+          print errs
 
-def setTitle(smbins,zbins,sm,zz):
+def setSMTitle(ax,smbins,sm):
      smstr=r"log(M$_{\star}$/M$_{\odot}$)=["+str(smbins[sm])+", "+str(smbins[sm+1])+")"
+     ax.set_title(smstr,fontsize=12,fontweight='heavy')
+
+def setZTitle(ax,zbins,zz,fontsize):
      zstr=r"z=["+str(zbins[zz])+", "+str(zbins[zz+1])+")"
-     plt.title(r"{}; {}".format(smstr,zstr))
+     xpos=1.05*(ax.get_xlim()[1]-ax.get_xlim()[0])+ax.get_xlim()[0]
+     ypos=np.mean(ax.get_ylim())
+     ax.text(xpos,ypos,zstr,fontsize=fontsize,rotation=270,fontweight='heavy',verticalalignment='center')
 
-def plotLegend():
+def plotRadLegend():
 #     plt.legend(('Red Spheroidal','Red Bulge+Disk','Red Disk','Blue Spheroidal','Blue Bulge+Disk','Blue Disk'))
-     plt.legend(prop={'size':12},numpoints=1,loc='upper right', bbox_to_anchor=(-1.05,0.95))
+     xpad=0.1
+     plt.legend(prop={'size':12},numpoints=1,loc='center right', bbox_to_anchor=(-1-xpad,0.5),frameon=False)
 
-def hidePanel(ax):
-     ax.set_frame_on(False)
-     ax.get_xaxis().set_visible(False)
-     ax.get_yaxis().set_visible(False)
+def plotBamfordLegend():
+     # get list of legend entries and reverse them
+     fontsize=9
+     handles,labels=plt.gca().get_legend_handles_labels()
+     plt.legend(handles[::-1],labels[::-1],title=r'log(M$_{\star}$/M$_{\odot}$) =',prop={'size':fontsize},numpoints=1,loc='best',markerscale=0.7,frameon=False)
+     plt.gca().get_legend().get_title().set_fontsize(fontsize)
+
+def hidePanel(axarr,zz,sm):
+     axarr[zz,sm].set_frame_on(False)
+     axarr[zz,sm].get_xaxis().set_visible(False)
+     axarr[zz,sm].get_yaxis().set_visible(False)
+
+     # put the axis labels on neighboring panels back
+     plt.setp(axarr[zz-1,sm].get_xticklabels(), visible=True)
+     plt.setp(axarr[zz,sm+1].get_yticklabels(), visible=True)
+
+def makeRadPlot(plotFile,zbins,smbins,complete,sat,satCorr,field,cen):
+# plot fractions of color/morph types vs R/R200 in separate panels for z and SM bins
+
+    axarr=setupRadPlot(zbins,smbins)
+    for sm in range(smbins.size-1):
+         for zz in range(zbins.size-1):
+              if(complete[sm,zz]==1):
+                   oplotRad(axarr[zz,sm],sat,sm,zz,satRad,1,1)
+                   oplotRad(axarr[zz,sm],satCorr,sm,zz,satRad,0,0)
+                   oplotRad(axarr[zz,sm],field,sm,zz,1.,1,0)
+                   oplotRad(axarr[zz,sm],cen,sm,zz,0.,1,0)
+
+                   if(zz==0):
+                        setSMTitle(axarr[zz,sm],smbins,sm)
+                   if(sm==smbins.size-2):
+                        setZTitle(axarr[zz,sm],zbins,zz,12)
+
+              else:
+                   hidePanel(axarr,zz,sm)
+
+    plotRadLegend()
+    plt.savefig(plotFile)
+
+def setupBamfordPlot(zbins):
+    # use helvetica and latex
+    plt.clf()
+    plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'],'size':20})
+    plt.rc('text', usetex=True)
+    plt.rc('axes', linewidth=1.5)
+    plt.rc('xtick',labelsize=12)
+    plt.rc('ytick',labelsize=12)
+
+    # make figure with separate panels for SM and z bins with shared axes
+    fig,axarr=plt.subplots(zbins.size-1,2,sharex=True,sharey=True)
+    fig.subplots_adjust(hspace=0,wspace=0)
+
+    fig.text(0.5,0.03,r'R/R$_{200{\rm c}}$',verticalalignment='center',rotation='horizontal',fontsize='medium')
+    fig.text(0.03,0.6,r'Fraction $|_{\rm M_{\star},z}$',horizontalalignment='center',rotation='vertical',fontsize='medium')
+    plt.xlim((-0.1,1.1))
+    plt.ylim((-0.03,1.03))
+
+    # hide x ticks for top plots and y ticks for right plots
+    plt.setp([[a.get_xticklabels() for a in axarr[b,:]] for b in range(0,zbins.size-2)], visible=False)
+    plt.setp([a.get_yticklabels() for a in axarr[:,1]], visible=False)
+
+    return axarr
+
+def oplotBamford(axs,complete,smbins,arr,zz,rad,errflag,labelflag):
+
+     nsplit=2 # red, elliptical
+     nsmbins=smbins.size-1
+     offsets=np.linspace(-1,1,num=nsmbins)*0.025
+     colors=np.array(['red','green'])
+     markers=np.array(['s','o'])
+     linestyles=np.array([':','--','-'])
+     alphas=np.array([0.5,0.75,1.0])
+
+     for sm in range(nsmbins):
+          if(complete[sm,zz]==1):
+               yvals=getCMFrac(arr,sm,zz,nsplit)
+
+               if(errflag == 1):
+                    lw=2
+                    ms=8
+                    errs=getCMErr(yvals)
+               else:
+                    lw=0
+                    ms=6
+                    errs=np.repeat(None,nsplit)
+
+               if(labelflag == 1):
+                    label="[{}-{})".format(smbins[sm],smbins[sm+1])
+               else:
+                    label=None
+
+               if((np.min(errs) >= 0.) | (errs[0]==None)): # check that there are enough to get error bars
+                    for ii in range(nsplit):
+                         axs[ii].errorbar(rad+offsets[sm],yvals[ii],yerr=errs[ii],color=colors[ii],marker=markers[ii],ms=ms,ls=linestyles[sm],lw=lw,alpha=alphas[sm],label=label)
+
+def setBamfordTitle(axs):
+     axs[0].set_title('Red Fraction',fontsize='medium',fontweight='heavy')
+     axs[1].set_title('Spheroidal Fraction',fontsize='medium',fontweight='heavy')
+
+def makeBamfordPlot(plotFile,zbins,smbins,complete,sat,satCorr,field,cen):
+# plot red frac and early type frac vs R/R200 with separate curves for different SM and separate panels for different z
+
+    axarr=setupBamfordPlot(zbins)
+    for zz in range(zbins.size-1):
+         oplotBamford(axarr[zz,:],complete,smbins,sat,zz,satRad,1,1)
+         oplotBamford(axarr[zz,:],complete,smbins,satCorr,zz,satRad,0,0)
+         oplotBamford(axarr[zz,:],complete,smbins,field,zz,1.,1,0)
+         oplotBamford(axarr[zz,:],complete,smbins,cen,zz,0.,1,0)
+
+         if(zz==0):
+              setBamfordTitle(axarr[zz,:])
+         setZTitle(axarr[zz,1],zbins,zz,'medium')
+
+    plt.sca(axarr[0,0])
+    plotBamfordLegend()     
+    plt.savefig(plotFile)
 
 def readCatalogs(acsFile,groupFile):
     acs=fitsio.read(acsFile,ext=1)
@@ -433,14 +571,17 @@ if __name__ == '__main__':
 
     plotDir="../plots/"
 
+    # read group and galaxy catalogs
     acsFile="../../code/lensing18_20110914.fits"
     groupFile="../../code/group5_20110914.fits"
     acs,group=readCatalogs(acsFile,groupFile)
     acs,group=cleanCatalogs(acs,group,minz,maxz)
 
+    # assign halo mass and single morph class for each galaxy
     halomass=assignHaloMass(acs,group)
     morph=assignMorph(acs['ZEST_TYPE'],acs['ZEST_BULGE'])
 
+    # setup bins in SM, z, color, morphology, and group-centric radius
     smbins=np.array([9.8,10.3,10.7,11.5])
     zbins=np.array([0.2,0.8,1.0])
     complete=np.array([[1,0],[1,1],[1,1]]) # update by hand with smbins, zbins
@@ -454,24 +595,16 @@ if __name__ == '__main__':
 
     satRad=rbins[:-1]+0.5*(rbins[1]-rbins[0])
 
-
+    # put galaxies in grid of bins
     cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh)
 
+    # apply corrections to the satellite population for contamination from field galaxies
     satCorr=contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins)
 
-    plotFile=plotDir+"satrad.pdf"
-    axarr=setupRadPlot(zbins,smbins)
-    for sm in range(smbins.size-1):
-         for zz in range(zbins.size-1):
-              if(complete[sm,zz]==1):
-                   oplotRad(axarr[zz,sm],sat,sm,zz,satRad,1,1)
-                   oplotRad(axarr[zz,sm],satCorr,sm,zz,satRad,0,0)
-                   oplotRad(axarr[zz,sm],field,sm,zz,1.,1,0)
-                   oplotRad(axarr[zz,sm],cen,sm,zz,0.,1,0)
-#                   setTitle(axarr[zz,sm],smbins,zbins,sm,zz)
+    # make plot of fraction of color/morph types vs R/R200 with separate panels for each SM, z bin.
+    radPlotFile=plotDir+"satrad_mh{}-{}.pdf".format(minmh,maxmh)
+    makeRadPlot(radPlotFile,zbins,smbins,complete,sat,satCorr,field,cen)
 
-              else:
-                   hidePanel(axarr[zz,sm])
-
-    plotLegend()
-    plt.savefig(plotFile)
+    bamfordPlotFile=plotDir+"bamford_mh{}-{}.pdf".format(minmh,maxmh)
+    makeBamfordPlot(bamfordPlotFile,zbins,smbins,complete,sat,satCorr,field,cen)
+    
