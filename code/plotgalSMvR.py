@@ -125,25 +125,41 @@ def oplotCentralRegion(plt, minR, maxR, minSM, maxSM, smLimit):
     # add shaded region on left to show central area
     plt.fill_betweenx(((smLimit-minSM)/(maxSM-minSM),1),0,(0-minR)/(maxR-minR),color='gray',alpha=0.1)
 
-def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph):
+def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph, nPanels, thisPanel):
     # setup plot of SM vs R with colorbar
     
-    # use helvetica and latex
-    plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'],'size':20})
-    plt.rc('text', usetex=True)
-    plt.rc('axes',linewidth=1.5)
 
-    # start the plot with axes
-    plt.figure(1)
+    if(thisPanel==1):
+           # use helvetica and latex
+           plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'],'size':20})
+           plt.rc('text', usetex=True)
+           plt.rc('axes',linewidth=1.5)
+
+           # start the plot with axes
+           plt.figure(1)
 
     # main gridspec to divide figure into a different cells
     # there will be a main figure with the galaxies and a second for the colorbar
-    nCells=8 # main will take up a fraction (nCells-1)/nCells of the full width
-    gs=gridspec.GridSpec(1,nCells)
-    ax1=plt.subplot(gs[:,:-1])
 
-    plt.xlabel(r'R/R$_{200{\rm c}}$',fontsize='medium')
-    plt.ylabel(r'log(M$_{\star}/$M$_{\odot}$)',fontsize='medium')
+    if(nPanels==1): 
+           nCells=8 # main will take up a fraction (nCells-1)/nCells of the full width
+           gs=gridspec.GridSpec(1,nCells)
+           ax1=plt.subplot(gs[:,:-1])
+
+           plt.xlabel(r'R/R$_{200{\rm c}}$',fontsize='medium')
+           plt.ylabel(r'log(M$_{\star}/$M$_{\odot}$)',fontsize='medium')
+
+    else:
+           nCols=3
+           nRows=int(np.ceil(float(nPanels)/nCols))
+           widthRatio=3 # ratio of panel width to colorbar width
+           nCells=nCols*widthRatio+1 # main will take up a fraction (nCells-1)/nCells of the full width
+           gs=gridspec.GridSpec(nRows,nCells)
+
+           thisCol=int(np.remainder(thisPanel,nCols))
+           thisRow=int(np.floor(float(thisPanel)/nCols))
+           ax1=plt.subplot(gs[thisRow,thisCol*widthRadio:(thisCol+1)*widthRatio-1])
+
 
     # z range text (upper right)
     xText=0.95
@@ -362,7 +378,7 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh, morph):
     cmax=1.0 # 1 -> pure gray/black, lower to leave some color
 
     # set up the plot
-    plt,ax1,gs=setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph)
+    plt,ax1,gs=setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph, 1, 1)
 
     # record stats of plotted galaxies
     nCen=0 # number of centrals plotted
@@ -408,8 +424,8 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh, morph):
 # MAIN - if plotgalSMvR.py is called from command line
 if __name__ == '__main__':
     import sys
-    if(len(sys.argv)!=8):
-        print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile minZ maxZ morph"
+    if(len(sys.argv)!=9):
+        print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile minZ maxZ minMh maxMh morph"
         exit
 
     imDir=sys.argv[1]
@@ -419,7 +435,7 @@ if __name__ == '__main__':
     maxZ=float(sys.argv[5])
     minMh=float(sys.argv[6])
     maxMh=float(sys.argv[7])
-    morph=float(sys.argv[8])
+    morph=sys.argv[8]
 
-    main(imDir, imListFile, plotFile, minZ, maxZ, morph)
+    main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh, morph)
     
