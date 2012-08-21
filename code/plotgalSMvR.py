@@ -94,14 +94,14 @@ def setMorphTitle(plt, morph):
        
     plt.title(morphStr)
 
-def oplotScaleBar(plt, xBar, yBar, zMed, imSize, imSizePlot):
+def oplotScaleBar(plt, xBar, yBar, zMed, imSize, imSizePlot, barFontSize):
     # add scale to show galaxy sizes
     cosmo=cosmology.Cosmo(h=0.72,omega_m=0.258,omega_l=0.742) # WMAP5
     dAng=cosmo.Da(0,zMed)
     barStr=str(imSize)+r'" $\approx$ '+str(int(round(dAng*(imSize/3600.)*(np.pi/180.)*1000)))+' kpc'
 
     plt.plot((xBar,xBar-imSizePlot),(yBar,yBar),linestyle='solid',color='black',linewidth=3)
-    plt.text(xBar-0.5*imSizePlot,yBar+0.015,barStr,size='x-small',horizontalalignment='center',verticalalignment='bottom')
+    plt.text(xBar-0.5*imSizePlot,yBar+0.015,barStr,size=barFontSize,horizontalalignment='center',verticalalignment='bottom')
 
 def oplotZRange(plt, xText, yText, minZ, maxZ, zFontSize):
     # add text to show z range
@@ -139,6 +139,7 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, mo
        tickLabelSize=14
        figSize=(8,6)
        zFontSize='medium'
+       barFontSize='x-small'
     else:
        lmarg=0.1
        rmarg=0.01
@@ -155,6 +156,7 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, mo
        tickLabelSize=14
        figSize=(8,9)
        zFontSize=10
+       barFontSize=7
 
     if(thisPanel==0):
            # use helvetica and latex
@@ -163,8 +165,8 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, mo
            plt.rc('axes',linewidth=1.5)
            plt.rc('xtick',labelsize=tickLabelSize)
            plt.rc('ytick',labelsize=tickLabelSize)
-           xStr=r'R/R$_{200{\rm c}}$'
-           yStr=r'log(M$_{\star}/$M$_{\odot}$)'
+           xStr=r'Group-centric distance [R/R$_{200{\rm c}}$]'
+           yStr=r'Stellar mass [log(M$_{\star}/$M$_{\odot}$)]'
                   
            # start the plot with axes
            fig=plt.figure(1,figsize=figSize)
@@ -197,7 +199,7 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, mo
     # scale bar (below z range)
     xBar=xText
     yBar=0.82
-#    oplotScaleBar(plt, xBar, yBar, zMed, imSize, imSizePlot)
+    oplotScaleBar(plt, xBar, yBar, zMed, imSize, imSizePlot, barFontSize)
     
     # print morph type (title)
 #    setMorphTitle(plt, morph)
@@ -380,7 +382,6 @@ def oplot2dColorbar(plt, nPanels, marg, nColors, nShades, c0, c1, cmap, pivot, c
     else:
        ax2.imshow(np.transpose(cbar2d_im),origin='lower',extent=[minColor,maxColor,0,cbar2d_width],cmap=my_cmap_2d,interpolation='nearest')
 
-    
 def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph):
 
     # set plot ranges
