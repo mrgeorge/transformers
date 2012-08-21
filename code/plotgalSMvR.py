@@ -5,7 +5,6 @@ import matplotlib
 matplotlib.use('Agg') # must appear before importing pyplot to get plots w/o GUI
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-import matplotlib.gridspec as gridspec
 import numpy as np
 from scipy import ndimage
 from esutil import cosmology
@@ -104,10 +103,10 @@ def oplotScaleBar(plt, xBar, yBar, zMed, imSize, imSizePlot):
     plt.plot((xBar,xBar-imSizePlot),(yBar,yBar),linestyle='solid',color='black',linewidth=3)
     plt.text(xBar-0.5*imSizePlot,yBar+0.015,barStr,size='x-small',horizontalalignment='center',verticalalignment='bottom')
 
-def oplotZRange(plt, xText, yText, minZ, maxZ):
+def oplotZRange(plt, xText, yText, minZ, maxZ, zFontSize):
     # add text to show z range
     zStr=r''+str(minZ)+' $<$ z $<$ '+str(maxZ)
-    plt.text(xText,yText,zStr,horizontalalignment='right',verticalalignment='top')
+    plt.text(xText,yText,zStr,horizontalalignment='right',verticalalignment='top',fontsize=zFontSize)
 
 def getSMLimit(maxZ):
     # return the stellar mass limit at maxZ
@@ -128,54 +127,72 @@ def oplotCentralRegion(plt, minR, maxR, minSM, maxSM, smLimit):
 def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph, thisPanel, nPanels):
     # setup plot of SM vs R with colorbar
 
+    if(nPanels==1):
+       lmarg=0.03
+       rmarg=0.08
+       bmarg=0.1
+       tmarg=0.02
+       nCols=1
+       nRows=1
+       rect=np.array([lmarg,bmarg,(1.-rmarg-lmarg),(1.-tmarg-bmarg)])
+
+       tickLabelSize=14
+       figSize=(8,6)
+       zFontSize='medium'
+    else:
+       lmarg=0.1
+       rmarg=0.01
+       bmarg=0.2
+       tmarg=0.01
+       nCols=np.min([3,nPanels])
+       nRows=int(np.ceil(float(nPanels)/nCols))
+       thisCol=int(np.remainder(thisPanel,nCols))
+       thisRow=int(np.floor(float(thisPanel)/nCols))
+       panelWidth=(1.-rmarg-lmarg)/nCols
+       panelHeight=(1.-tmarg-bmarg)/nRows
+       rect=np.array([lmarg+thisCol*panelWidth,bmarg+(nRows-thisRow-1)*panelHeight,panelWidth,panelHeight])
+
+       tickLabelSize=14
+       figSize=(8,9)
+       zFontSize=10
+
     if(thisPanel==0):
            # use helvetica and latex
            plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'],'size':20})
            plt.rc('text', usetex=True)
            plt.rc('axes',linewidth=1.5)
-           if(nPanels==1):
-                  plt.rc('xtick',labelsize=14)
-                  plt.rc('ytick',labelsize=14)
-           else:       
-                  plt.rc('xtick',labelsize=10)
-                  plt.rc('ytick',labelsize=10)
+           plt.rc('xtick',labelsize=tickLabelSize)
+           plt.rc('ytick',labelsize=tickLabelSize)
+           xStr=r'R/R$_{200{\rm c}}$'
+           yStr=r'log(M$_{\star}/$M$_{\odot}$)'
                   
            # start the plot with axes
-           plt.figure(1)
+           fig=plt.figure(1,figsize=figSize)
 
-    # main gridspec to divide figure into a different cells
     # there will be a main figure with the galaxies and a second for the colorbar
-
+    # a set of axes will be created for each panel and for the colorbar
     if(nPanels==1): 
-           nCells=8 # main will take up a fraction (nCells-1)/nCells of the full width
-           gs=gridspec.GridSpec(1,nCells)
-           ax1=plt.subplot(gs[:,:-1])
+           ax1=plt.axes(rect)
 
-           plt.xlabel(r'R/R$_{200{\rm c}}$',fontsize='medium')
-           plt.ylabel(r'log(M$_{\star}/$M$_{\odot}$)',fontsize='medium')
+           plt.xlabel(xStr,fontsize='medium')
+           plt.ylabel(yStr,fontsize='medium')
 
     else:
-           nCols=np.min([3,nPanels])
-           nRows=int(np.ceil(float(nPanels)/nCols))
-           widthRatio=3 # ratio of panel width to colorbar width
-           nCells=nCols*widthRatio+1 # main will take up a fraction (nCells-1)/nCells of the full width
-           gs=gridspec.GridSpec(nRows,nCells,wspace=0,hspace=0)
+           ax1=plt.axes(rect)
 
-           thisCol=int(np.remainder(thisPanel,nCols))
-           thisRow=int(np.floor(float(thisPanel)/nCols))
-           ax1=plt.subplot(gs[thisRow,thisCol*widthRatio:(thisCol+1)*widthRatio])
+           if(thisPanel==0):
+              fig.text(lmarg+0.5*(1.-lmarg-rmarg),0.75*bmarg,xStr,fontsize='medium',horizontalalignment='center',verticalalignment='center',rotation='horizontal')
+              fig.text(0.22*lmarg,bmarg+0.5*(1.-bmarg-tmarg),yStr,fontsize='medium',horizontalalignment='center',verticalalignment='center',rotation='vertical')
            
            if(thisCol != 0):
                   plt.setp(ax1.get_yticklabels(),visible=False)
            if((thisRow != nRows) & (thisPanel+nCols < nPanels)):
                   plt.setp(ax1.get_xticklabels(),visible=False)
 
-           plt.subplots_adjust(hspace=0,wspace=0)
-
     # z range text (upper right)
     xText=0.95
     yText=0.95
-#    oplotZRange(plt, xText, yText, minZ, maxZ)
+    oplotZRange(plt, xText, yText, minZ, maxZ, zFontSize)
 
     # scale bar (below z range)
     xBar=xText
@@ -204,7 +221,8 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, mo
 
     plt.minorticks_on()
 
-    return (plt,ax1,gs)
+    marg=np.array([lmarg,rmarg,bmarg,tmarg])
+    return (plt,ax1,marg)
 
 def prepareImage(img, imSize, fullImSize, angle, floor):
     # clean up the image for plotting: crop, filter, and rotate
@@ -287,12 +305,40 @@ def oplotGalaxy(ax1, img, rScale, smScale, floor, imSizePlot, c0, rgb, c1, pivot
 
     ax1.imshow(normImg,origin='lower',extent=[rScale-0.5*imSizePlot,rScale+0.5*imSizePlot,smScale-0.5*imSizePlot,smScale+0.5*imSizePlot],interpolation='nearest')
 
-def oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, pivot, cmin, cmax, minColor, maxColor, cbar2d_width):
+def oplot2dColorbar(plt, nPanels, marg, nColors, nShades, c0, c1, cmap, pivot, cmin, cmax, minColor, maxColor, cbar2d_width):
     # add a two-dimensional colorbar
 
     # set up subplot
-    ax2=plt.subplot(gs[:,-1])
+    if(nPanels==1): # vertical colorbar on the right
+       rect=np.array([1.-2*marg[1],marg[2],marg[1],1.-marg[3]-marg[2]])
+       ax2=plt.axes(rect)
 
+       # set axes
+       ax2.yaxis.tick_right()
+       ax2.yaxis.set_label_position("right")
+       plt.xlabel(r'$\mu$',fontsize='medium')
+       plt.ylabel(r'NUV$ - $R',fontsize='medium')
+
+       plt.tick_params(axis='x',which='both',bottom='off',top='off',labelbottom='off')
+       plt.tick_params(axis='y',which='major',left='on')
+
+       plt.xlim((0,cbar2d_width))
+       plt.ylim((minColor,maxColor))
+    else: # horizontal colorbar on the bottom
+       rect=np.array([marg[0]+0.2*(1.-marg[1]-marg[0]),0.1*marg[2],0.6*(1.-marg[1]-marg[0]),0.6*(marg[2])])
+       ax2=plt.axes(rect)
+    
+       # set axes
+       plt.xlabel(r'NUV$ - $R',fontsize='medium')
+       plt.ylabel(r'$\mu$',fontsize='medium')
+
+       plt.tick_params(axis='y',which='both',left='off',right='off',labelleft='off')
+       plt.tick_params(axis='x',which='major',bottom='on')
+
+       plt.xlim((minColor,maxColor))
+       plt.ylim((0,cbar2d_width))
+
+    
     # pixel grid for colorbar image
     cbar2d_im=np.linspace(0,nColors*nShades-1,num=nColors*nShades).reshape(nColors,nShades)/(nColors*nShades)
 
@@ -329,20 +375,10 @@ def oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, pivot, cmin, cmax, 
     my_cmap_2d=matplotlib.colors.LinearSegmentedColormap('my_colormap_2d',cbar2d_cdict,N=nColors*nShades)
 
     # plot the colorbar
-    ax2.imshow(cbar2d_im,origin='lower',extent=[0,cbar2d_width,minColor,maxColor],cmap=my_cmap_2d,interpolation='nearest')
-
-    # set axes
-    ax2.yaxis.tick_right()
-    ax2.yaxis.set_label_position("right")
-
-    plt.xlabel(r'$\mu$',fontsize='medium')
-    plt.ylabel(r'NUV$ - $R',fontsize='medium')
-
-    plt.tick_params(axis='x',which='both',bottom='off',top='off',labelbottom='off')
-    plt.tick_params(axis='y',which='major',left='on')
-
-    plt.xlim((0,cbar2d_width))
-    plt.ylim((minColor,maxColor))
+    if(nPanels==1):
+       ax2.imshow(cbar2d_im,origin='lower',extent=[0,cbar2d_width,minColor,maxColor],cmap=my_cmap_2d,interpolation='nearest')
+    else:
+       ax2.imshow(np.transpose(cbar2d_im),origin='lower',extent=[minColor,maxColor,0,cbar2d_width],cmap=my_cmap_2d,interpolation='nearest')
 
     
 def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph):
@@ -396,7 +432,7 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph):
        imSizePlot=0.2 # fraction of axis range
 
        # set up the plot
-       plt,ax1,gs=setupPlot(thisMinZ, zMed, thisMaxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph, zz, nPanels)
+       plt,ax1,marg=setupPlot(thisMinZ, zMed, thisMaxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph, zz, nPanels)
 
        # record stats of plotted galaxies
        nCen=0 # number of centrals plotted
@@ -436,10 +472,10 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph):
     # end loop over redshift bins / plot panels
 
     # plot the 2d colorbar
-    oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, pivot, cmin, cmax, minColor, maxColor, cbar2d_width)
+    oplot2dColorbar(plt, nPanels, marg, nColors, nShades, c0, c1, cmap, pivot, cmin, cmax, minColor, maxColor, cbar2d_width)
     
     # save figure
-    plt.savefig(plotFile)
+    plt.savefig(plotFile,dpi=300)
 
 
 # MAIN - if plotgalSMvR.py is called from command line
