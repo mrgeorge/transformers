@@ -125,16 +125,21 @@ def oplotCentralRegion(plt, minR, maxR, minSM, maxSM, smLimit):
     # add shaded region on left to show central area
     plt.fill_betweenx(((smLimit-minSM)/(maxSM-minSM),1),0,(0-minR)/(maxR-minR),color='gray',alpha=0.1)
 
-def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph, nPanels, thisPanel):
+def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph, thisPanel, nPanels):
     # setup plot of SM vs R with colorbar
-    
 
-    if(thisPanel==1):
+    if(thisPanel==0):
            # use helvetica and latex
            plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'],'size':20})
            plt.rc('text', usetex=True)
            plt.rc('axes',linewidth=1.5)
-
+           if(nPanels==1):
+                  plt.rc('xtick',labelsize=14)
+                  plt.rc('ytick',labelsize=14)
+           else:       
+                  plt.rc('xtick',labelsize=10)
+                  plt.rc('ytick',labelsize=10)
+                  
            # start the plot with axes
            plt.figure(1)
 
@@ -150,29 +155,35 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, mo
            plt.ylabel(r'log(M$_{\star}/$M$_{\odot}$)',fontsize='medium')
 
     else:
-           nCols=3
+           nCols=np.min([3,nPanels])
            nRows=int(np.ceil(float(nPanels)/nCols))
            widthRatio=3 # ratio of panel width to colorbar width
            nCells=nCols*widthRatio+1 # main will take up a fraction (nCells-1)/nCells of the full width
-           gs=gridspec.GridSpec(nRows,nCells)
+           gs=gridspec.GridSpec(nRows,nCells,wspace=0,hspace=0)
 
            thisCol=int(np.remainder(thisPanel,nCols))
            thisRow=int(np.floor(float(thisPanel)/nCols))
-           ax1=plt.subplot(gs[thisRow,thisCol*widthRadio:(thisCol+1)*widthRatio-1])
+           ax1=plt.subplot(gs[thisRow,thisCol*widthRatio:(thisCol+1)*widthRatio])
+           
+           if(thisCol != 0):
+                  plt.setp(ax1.get_yticklabels(),visible=False)
+           if((thisRow != nRows) & (thisPanel+nCols < nPanels)):
+                  plt.setp(ax1.get_xticklabels(),visible=False)
 
+           plt.subplots_adjust(hspace=0,wspace=0)
 
     # z range text (upper right)
     xText=0.95
     yText=0.95
-    oplotZRange(plt, xText, yText, minZ, maxZ)
+#    oplotZRange(plt, xText, yText, minZ, maxZ)
 
     # scale bar (below z range)
     xBar=xText
     yBar=0.82
-    oplotScaleBar(plt, xBar, yBar, zMed, imSize, imSizePlot)
+#    oplotScaleBar(plt, xBar, yBar, zMed, imSize, imSizePlot)
     
     # print morph type (title)
-    setMorphTitle(plt, morph)
+#    setMorphTitle(plt, morph)
 
     # bottom shaded region for SM limit
     smLimit=getSMLimit(maxZ)
@@ -334,7 +345,7 @@ def oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, pivot, cmin, cmax, 
     plt.ylim((minColor,maxColor))
 
     
-def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh, morph):
+def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph):
 
     # set plot ranges
     minR=-0.15
@@ -344,22 +355,8 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh, morph):
     minColor=0. # min M(NUV)-M(R) for colorbar
     maxColor=6. # max M(NUV)-M(R) for colorbar
 
-    # read data
-    data=readData(imListFile)
-    data=selectData(data, minZ, maxZ, minMh, maxMh, morph) # cut on flag=1, z-range, halo mass, morph
-    if(data.size == 0):
-        print "no data in range"
-        return
-    data=scatterCentrals(data, minR) # add offsets to centrals for display
-    zMed=np.median(data['z'])
 
-    # get image properties
-    img=fitsio.read(imDir+data['filename'][0]) # read first one to get params
-    fullImSize=10. # fits file is 10" on a side
-    imSize=5 # plot a square of this size on a side (arcsec)
-    imSizePlot=0.2 # fraction of axis range
-
-    # other aesthetics for plotting
+    # aesthetics for plotting
     floor=0.01 # noise level, fluxes lower than this are dropped
     cbar2d_width=0.6 # sets how big the colorbar looks
 
@@ -377,45 +374,69 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh, morph):
     cmin=0.25 # 0 -> pure white, higher to leave some color
     cmax=1.0 # 1 -> pure gray/black, lower to leave some color
 
-    # set up the plot
-    plt,ax1,gs=setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph, 1, 1)
+    # determine number of panels for redshift bins and loop over them
+    nPanels=int(np.round((maxZ-minZ)/zBin))
+    for zz in range(nPanels):
+       thisMinZ=minZ + zz*zBin
+       thisMaxZ=thisMinZ + zBin
 
-    # record stats of plotted galaxies
-    nCen=0 # number of centrals plotted
-    nShown=0 # total number of galaxies plotted
-    nBelowFloor=0 # number not shown because whole image is below floor
-    nNoSource=0 # number not shown because a source wasn't found in the middle of image
+       # read data
+       data=readData(imListFile)
+       data=selectData(data, thisMinZ, thisMaxZ, minMh, maxMh, morph) # cut on flag=1, z-range, halo mass, morph
+       if(data.size == 0):
+           print "no data in range"
+           return
+       data=scatterCentrals(data, minR) # add offsets to centrals for display
+       zMed=np.median(data['z'])
 
-    for ii in range(data.shape[0]):
+       # get image properties
+       img=fitsio.read(imDir+data['filename'][0]) # read first one to get params
+       fullImSize=10. # fits file is 10" on a side
+       imSize=5 # plot a square of this size on a side (arcsec)
+       imSizePlot=0.2 # fraction of axis range
 
-        # read and manipulate thumbnail image
-        img=fitsio.read(imDir+data['filename'][ii])
-        img,imgBelowFloor,noSource=prepareImage(img, imSize, fullImSize, data['theta'][ii], floor)
+       # set up the plot
+       plt,ax1,gs=setupPlot(thisMinZ, zMed, thisMaxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph, zz, nPanels)
 
-        if(imgBelowFloor):
-            nBelowFloor+=1
-        elif(noSource):
-            nNoSource+=1
-        else: # image passes cuts
-            nShown+=1
-            if(data['r'][ii] <= 0):
-                nCen+=1
+       # record stats of plotted galaxies
+       nCen=0 # number of centrals plotted
+       nShown=0 # total number of galaxies plotted
+       nBelowFloor=0 # number not shown because whole image is below floor
+       nNoSource=0 # number not shown because a source wasn't found in the middle of image
+
+       for ii in range(data.shape[0]):
+
+           # read and manipulate thumbnail image
+           img=fitsio.read(imDir+data['filename'][ii])
+           img,imgBelowFloor,noSource=prepareImage(img, imSize, fullImSize, data['theta'][ii], floor)
+
+           if(imgBelowFloor):
+               nBelowFloor+=1
+           elif(noSource):
+               nNoSource+=1
+           else: # image passes cuts
+               nShown+=1
+               if(data['r'][ii] <= 0):
+                   nCen+=1
                 
-            rScale=(data['r'][ii]-minR)/(maxR-minR)
-            smScale=(data['sm'][ii]-minSM)/(maxSM-minSM)
-            colorScale=(data['color'][ii]-minColor)/(maxColor-minColor)
+               rScale=(data['r'][ii]-minR)/(maxR-minR)
+               smScale=(data['sm'][ii]-minSM)/(maxSM-minSM)
+               colorScale=(data['color'][ii]-minColor)/(maxColor-minColor)
 
-            # define RGB color for this galaxy
-            rgb=(cmap(colorScale))[0:3]
+               # define RGB color for this galaxy
+               rgb=(cmap(colorScale))[0:3]
 
-            # plot the galaxy
-            oplotGalaxy(ax1, img, rScale, smScale, floor, imSizePlot, c0, rgb, c1, pivot, cmin, cmax, nShades)
-        #end for loop over galaxies
+               # plot the galaxy
+               oplotGalaxy(ax1, img, rScale, smScale, floor, imSizePlot, c0, rgb, c1, pivot, cmin, cmax, nShades)
+       #end for loop over galaxies
+
+       # print plot stats
+       print "nShown, nCen, nBelowFloor, nNoSource", nShown, nCen, nBelowFloor, nNoSource
+
+    # end loop over redshift bins / plot panels
+
     # plot the 2d colorbar
     oplot2dColorbar(plt, gs, nColors, nShades, c0, c1, cmap, pivot, cmin, cmax, minColor, maxColor, cbar2d_width)
-
-    # print plot stats
-    print "nShown, nCen, nBelowFloor, nNoSource", nShown, nCen, nBelowFloor, nNoSource
     
     # save figure
     plt.savefig(plotFile)
@@ -424,8 +445,8 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh, morph):
 # MAIN - if plotgalSMvR.py is called from command line
 if __name__ == '__main__':
     import sys
-    if(len(sys.argv)!=9):
-        print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile minZ maxZ minMh maxMh morph"
+    if(len(sys.argv)!=10):
+        print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile minZ maxZ zBin minMh maxMh morph"
         exit
 
     imDir=sys.argv[1]
@@ -433,9 +454,10 @@ if __name__ == '__main__':
     plotFile=sys.argv[3]
     minZ=float(sys.argv[4])
     maxZ=float(sys.argv[5])
-    minMh=float(sys.argv[6])
-    maxMh=float(sys.argv[7])
-    morph=sys.argv[8]
+    zBin=float(sys.argv[6])
+    minMh=float(sys.argv[7])
+    maxMh=float(sys.argv[8])
+    morph=sys.argv[9]
 
-    main(imDir, imListFile, plotFile, minZ, maxZ, minMh, maxMh, morph)
+    main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph)
     
