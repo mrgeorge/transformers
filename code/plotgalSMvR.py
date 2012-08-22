@@ -8,7 +8,9 @@ import matplotlib.image as mpimg
 import numpy as np
 from scipy import ndimage
 from esutil import cosmology
+import mrg
 
+cosmo=cosmology.Cosmo(h=0.72,omega_m=0.258,omega_l=0.742) # WMAP5
 
 def readData(imListFile):
     # read data file in IRSA format with image filenames
@@ -96,9 +98,10 @@ def setMorphTitle(plt, morph):
 
 def oplotScaleBar(plt, xBar, yBar, zMed, imSize, imSizePlot, barFontSize):
     # add scale to show galaxy sizes
-    cosmo=cosmology.Cosmo(h=0.72,omega_m=0.258,omega_l=0.742) # WMAP5
     dAng=cosmo.Da(0,zMed)
-    barStr=str(imSize)+r'" $\approx$ '+str(int(round(dAng*(imSize/3600.)*(np.pi/180.)*1000)))+' kpc'
+    angStr=str(round(imSize,1))+r'"'
+    kpcStr=str(int(round(dAng*(imSize/3600.)*(np.pi/180.)*1000)))+r' kpc'
+    barStr=r'{} $\approx$ {}'.format(kpcStr,angStr)
 
     plt.plot((xBar,xBar-imSizePlot),(yBar,yBar),linestyle='solid',color='black',linewidth=3)
     plt.text(xBar-0.5*imSizePlot,yBar+0.015,barStr,size=barFontSize,horizontalalignment='center',verticalalignment='bottom')
@@ -228,7 +231,7 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, mo
 
 def prepareImage(img, imSize, fullImSize, angle, floor):
     # clean up the image for plotting: crop, filter, and rotate
-    
+
     # select inner part of image
     xmid=img.shape[0]/2
     ymid=img.shape[1]/2
@@ -394,7 +397,7 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph):
 
 
     # aesthetics for plotting
-    floor=0.01 # noise level, fluxes lower than this are dropped
+#    floor=0.01 # noise level, fluxes lower than this are dropped
     cbar2d_width=0.6 # sets how big the colorbar looks
 
     # color params
@@ -429,7 +432,7 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph):
        # get image properties
        img=fitsio.read(imDir+data['filename'][0]) # read first one to get params
        fullImSize=10. # fits file is 10" on a side
-       imSize=5 # plot a square of this size on a side (arcsec)
+       imSize=mrg.rp2deg(30.,cosmo.Da(0,zMed)*1000)*3600 # plot a square of this size on a side (arcsec)
        imSizePlot=0.2 # fraction of axis range
 
        # set up the plot
@@ -445,6 +448,20 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph):
 
            # read and manipulate thumbnail image
            img=fitsio.read(imDir+data['filename'][ii])
+
+           colMat=np.resize(range(img.shape[0]),(img.shape[0],img.shape[0]))
+           rowMat=colMat.T
+           maxPos=np.unravel_index(np.argmax(img),img.shape)
+           pixDistMat=np.sqrt((rowMat-maxPos[0])**2 + (colMat-maxPos[1])**2)
+           reDeg=mrg.rp2deg(data['rgsize'][ii],cosmo.Da(0,data['z'][ii])*1000.)
+           rePix=reDeg*3600.*img.shape[0]/fullImSize
+           sel=((pixDistMat > 0.4*rePix) & (pixDistMat < 0.6*rePix))
+#           floor=np.median(img[sel])
+#           print "Re (pixels), Npix, Floor",rePix,len(sel.nonzero()[0]),floor
+
+           floor=0.01
+#           floor=0.01*((1.+zMed)/(1.+1.))**(-4)
+
            img,imgBelowFloor,noSource=prepareImage(img, imSize, fullImSize, data['theta'][ii], floor)
 
            if(imgBelowFloor):
