@@ -168,8 +168,8 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, mo
            plt.rc('axes',linewidth=1.5)
            plt.rc('xtick',labelsize=tickLabelSize)
            plt.rc('ytick',labelsize=tickLabelSize)
-           xStr=r'Group-centric distance [R/R$_{200{\rm c}}$]'
-           yStr=r'Stellar mass [log(M$_{\star}/$M$_{\odot}$)]'
+           xStr=r'Distance from Group Center [R/R$_{200{\rm c}}$]'
+           yStr=r'Stellar Mass [log(M$_{\star}/$M$_{\odot}$)]'
                   
            # start the plot with axes
            fig=plt.figure(1,figsize=figSize)
