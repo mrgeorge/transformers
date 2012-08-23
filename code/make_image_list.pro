@@ -7,12 +7,12 @@ pro make_image_list
 acs=mrdfits("~/data/cosmos/code/lensing18_20110914.fits",1)
 group=mrdfits("~/data/cosmos/code/group5_20110914.fits",1) ; for halo masses
 ext=".list"
-listFile="../images/acs_mem"
+listFile="../images/twenty_arcsec/acs_mem"
 openw,u,listFile+ext,/get_lun,width=1000
 
 ; select only members of interest
 sel=where(acs.kevin_mstar GT 9.4 $
-          AND acs.p_mem_best GT 0.5 $
+          AND (acs.p_mem_best GT 0.5 OR acs.p_mem_best_specz GT 0.5) $
          )
 
 acs=acs[sel]
@@ -123,13 +123,14 @@ close,u
 free_lun,u
 
 ; split into multiple lists if needed (IRSA can only take 1000 at a time)
-if(n_elements(acs) GT 1000) then begin
-   nLists=ceil(float(n_elements(acs))/1000)
+nTot=n_elements(acs)+n_elements(acsmiss)
+if(nTot GT 1000) then begin
+   nLists=ceil(float(nTot)/1000)
    for ii=0,nLists-1 do begin
       spawn,'head -1 '+listFile+ext+" > "+listFile+"_"+string(ii,format='(I0)')+ext
       if(ii LT nLists-1) then $
          spawn,'head -'+string(1+(ii+1)*1000,format='(I0)')+" "+listFile+ext+" | tail -1000 >> "+listFile+"_"+string(ii,format='(I0)')+ext $
-      else spawn,'head -'+string(1+(ii+1)*1000,format='(I0)')+" "+listFile+ext+" | tail -"+string(n_elements(acs) MOD 1000,format='(I0)')+" >> "+listFile+"_"+string(ii,format='(I0)')+ext
+      else spawn,'head -'+string(1+(ii+1)*1000,format='(I0)')+" "+listFile+ext+" | tail -"+string(nTot MOD 1000,format='(I0)')+" >> "+listFile+"_"+string(ii,format='(I0)')+ext
 
    endfor
    print,nLists,' sub-lists printed'
