@@ -45,7 +45,7 @@ endfor
 
 ; this is where the image cutout filename is recorded
 ; (following IRSA's naming convention)
-printf,u,"|          id |   flag |             ra |            dec |           z |          sm |       mhalo |           r |  ztype | zbulge | nomatch | rgflag |      rgsize |    rgsersic |        rgba |        rgpa |       color |        ssfr |         ebv |       theta |                                              filename |"
+printf,u,"|          id |   flag |             ra |            dec |       zbest |       zphot |        pmem |    pmemspec |          sm |       mhalo |           r |  ztype | zbulge | nomatch | rgflag |      rgsize |    rgsersic |        rgba |        rgpa |       color |        ssfr |         ebv |       theta |                                              filename |"
 
 ; convert size from pixels to kpc
 pixScale=0.05 ; arcsec/pixel
@@ -56,7 +56,10 @@ for ii=0,n_elements(acs)-1 do begin
           acs[ii].group_flag_best,$
           acs[ii].alpha_j2000,$
           acs[ii].delta_j2000,$
+          acs[ii].zphot,$
           acs[ii].photoz_non_comb,$
+          acs[ii].p_mem_best,$
+          acs[ii].p_mem_best_specz,$
           acs[ii].kevin_mstar,$
           halomass[ii],$
           acs[ii].dist_bcg_r200,$
@@ -100,7 +103,10 @@ for ii=0,n_elements(acsmiss)-1 do begin
           acsmiss[ii].group_flag_best,$
           acsmiss[ii].alpha_j2000,$
           acsmiss[ii].delta_j2000,$
+          acsmiss[ii].zphot,$
           acsmiss[ii].photoz_non_comb,$
+          acsmiss[ii].p_mem_best,$
+          acsmiss[ii].p_mem_best_specz,$
           acsmiss[ii].kevin_mstar,$
           halomassmiss[ii],$
           acsmiss[ii].dist_bcg_r200,$
