@@ -6,11 +6,16 @@ import matplotlib
 matplotlib.use('Agg') # must appear before importing pyplot to get plots w/o GUI
 import matplotlib.pyplot as plt
 
-def cleanCatalogs(acs,group,minz,maxz):
+def cleanCatalogs(acs,group,minz,maxz,ztype):
+
+    if(ztype=="zb"):
+         zphot="ZPHOT"
+    else:
+         zphot="PHOTOZ_NON_COMB"
 
     sel=((acs['KEVIN_MSTAR'] > 2) &
-         (acs['ZPHOT'] >= minz) &
-         (acs['ZPHOT'] < maxz) &
+         (acs[zphot] >= minz) &
+         (acs[zphot] < maxz) &
          (acs['MAG_AUTO'] < 24.2) &
          (acs['GOOD_ZPHOT_LENS'] == 1) &
          (acs['MU_CLASS'] == 1))
@@ -523,7 +528,7 @@ def getContamination(rbins):
 
      return (purity,completeness,magVals)
 
-def getMags(acs,morph,smbins,zbins,cbins,mbins):
+def getMags(acs,morph,smbins,zbins,cbins,mbins,ztype):
 
      nSMbins=smbins.size-1
      nzbins=zbins.size-1
@@ -532,14 +537,19 @@ def getMags(acs,morph,smbins,zbins,cbins,mbins):
 
      mags=np.zeros((nSMbins,nzbins,ncbins,nmbins))
 
+     if(ztype=="zb"):
+         zphot="ZPHOT"
+     else:
+         zphot="PHOTOZ_NON_COMB"
+
      for sm in range(nSMbins):
           for zz in range(nzbins):
                for cc in range(ncbins):
                     for mm in range(nmbins):
                          sel=((acs['KEVIN_MSTAR'] >= smbins[sm]) &
                                    (acs['KEVIN_MSTAR'] < smbins[sm+1]) &
-                                   (acs['ZPHOT'] >= zbins[zz]) &
-                                   (acs['ZPHOT'] < zbins[zz+1]) &
+                                   (acs[zphot] >= zbins[zz]) &
+                                   (acs[zphot] < zbins[zz+1]) &
                                    (acs['MNUV_MR'] >= cbins[cc]) &
                                    (acs['MNUV_MR'] < cbins[cc+1]) &
                                    (morph >= mbins[mm]) &
@@ -548,11 +558,11 @@ def getMags(acs,morph,smbins,zbins,cbins,mbins):
 
      return mags
 
-def contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins):
+def contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins,ztype):
 
      satCorr=sat.copy() # make a copy to avoid changing sat
 
-     mags=getMags(acs,morph,smbins,zbins,cbins,mbins)
+     mags=getMags(acs,morph,smbins,zbins,cbins,mbins,ztype)
      purity,completeness,magVals=getContamination(rbins)
 
      nSMbins=smbins.size-1
@@ -593,7 +603,7 @@ if __name__ == '__main__':
     acsFile="../../code/lensing18_20110914.fits"
     groupFile="../../code/group5_20110914.fits"
     acs,group=readCatalogs(acsFile,groupFile)
-    acs,group=cleanCatalogs(acs,group,minz,maxz)
+    acs,group=cleanCatalogs(acs,group,minz,maxz,ztype)
 
     # assign halo mass and single morph class for each galaxy
     halomass=assignHaloMass(acs,group,ztype)
@@ -617,7 +627,7 @@ if __name__ == '__main__':
     cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
 
     # apply corrections to the satellite population for contamination from field galaxies
-    satCorr=contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins)
+    satCorr=contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
     # make plot of fraction of color/morph types vs R/R200 with separate panels for each SM, z bin.
     radPlotFile=plotDir+"satrad_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
