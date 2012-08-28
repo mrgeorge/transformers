@@ -51,15 +51,15 @@ def selectData(data, minZ, maxZ, minMh, maxMh, morph):
 
     if(morph == "all"):
        return data
-    elif(morph == "early"):
+    elif(morph == "spheroidal"):
        sel=((data['ztype'] == 1) |
             ((data['ztype'] == 2) & (data['zbulge'] == 0)))
-    elif(morph == "edisk"):
+    elif(morph == "bulge+disk"):
        sel=((data['ztype'] == 2) &
             (data['zbulge'] == 1))
-    elif(morph == "ldisk"):
+    elif(morph == "latedisk"):
        sel=((data['ztype'] == 2) &
-            (data['zbulge'] == 2))
+            ((data['zbulge'] == 2) | (data['zbulge'] == 3)))
     elif(morph == "xdisk"):
        sel=((data['ztype'] == 2) &
             (data['zbulge'] == 3))
@@ -83,16 +83,16 @@ def setMorphTitle(plt, morph):
     # print morphological category plotted
     if(morph == "all"):
        morphStr="All Morphologies"
-    elif(morph == "early"):
-       morphStr="Early Types"
-    elif(morph == "edisk"):
-       morphStr="Early Disks"
-    elif(morph == "ldisk"):
-       morphStr="Late Disks"
+    elif(morph == "spheroidal"):
+       morphStr="Spheroidal"
+    elif(morph == "bulge+disk"):
+       morphStr="Bulge+Disk"
+    elif(morph == "latedisk"):
+       morphStr="Late Disk"
     elif(morph == "xdisk"):
-       morphStr="Extreme Disks"
+       morphStr="Extreme Disk"
     elif(morph == "irr"):
-       morphStr="Irregulars"
+       morphStr="Irregular"
        
     plt.title(morphStr)
 
@@ -127,7 +127,19 @@ def oplotCentralRegion(plt, minR, maxR, minSM, maxSM, smLimit):
     # add shaded region on left to show central area
     plt.fill_betweenx(((smLimit-minSM)/(maxSM-minSM),1),0,(0-minR)/(maxR-minR),color='gray',alpha=0.1)
 
-def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph, thisPanel, nPanels):
+def oplotMorphText(plt,yMorph,morphFontSize):
+    xmin,xmax=plt.gca().get_xlim()
+    xleft=xmin+0.03*(xmax-xmin)
+    xmid=xmin+0.5*(xmax-xmin)
+    xright=xmin+0.97*(xmax-xmin)
+    xMorph=np.array([xleft,xmid,xright])
+    halignment=np.array(['left','center','right'])
+    morphText=np.array(['Spheroidal','Bulge+Disk','Late Disk'])
+    for ss in range(morphText.size):
+       plt.text(xMorph[ss],yMorph,morphText[ss],horizontalalignment=halignment[ss],verticalalignment='top',fontsize=morphFontSize)
+
+
+def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph, thisPanel, nPanels, legendFlag):
     # setup plot of SM vs R with colorbar
 
     if(nPanels==1):
@@ -143,6 +155,7 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, mo
        figSize=(8,6)
        zFontSize='medium'
        barFontSize='x-small'
+       morphFontSize='medium'
     else:
        lmarg=0.1
        rmarg=0.01
@@ -160,6 +173,7 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, mo
        figSize=(8,9)
        zFontSize=10
        barFontSize=7
+       morphFontSize=9
 
     if(thisPanel==0):
            # use helvetica and latex
@@ -194,25 +208,35 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, mo
            if((thisRow != nRows) & (thisPanel+nCols < nPanels)):
                   plt.setp(ax1.get_xticklabels(),visible=False)
 
-    # z range text (upper right)
-    xText=0.95
-    yText=0.95
-    oplotZRange(plt, xText, yText, minZ, maxZ, zFontSize)
+    if(legendFlag):
+       # overlay morph category text
+       yMorph=0.97
+       oplotMorphText(plt,yMorph,morphFontSize)
+       plt.setp(ax1.get_xticklines(),visible=False)
+       plt.setp(ax1.get_yticklines(),visible=False)
+       plt.minorticks_off()
+    else:
+       # z range text (upper right)
+       xText=0.95
+       yText=0.95
+       oplotZRange(plt, xText, yText, minZ, maxZ, zFontSize)
 
-    # scale bar (below z range)
-    xBar=xText
-    yBar=0.82
-    oplotScaleBar(plt, xBar, yBar, zMed, imSize, imSizePlot, barFontSize)
+       # scale bar (below z range)
+       xBar=xText
+       yBar=0.82
+       oplotScaleBar(plt, xBar, yBar, zMed, imSize, imSizePlot, barFontSize)
     
     # print morph type (title)
 #    setMorphTitle(plt, morph)
 
-    # bottom shaded region for SM limit
-    smLimit=getSMLimit(maxZ)
-    oplotSMLimit(plt, smLimit, minSM, maxSM)
+       # bottom shaded region for SM limit
+       smLimit=getSMLimit(maxZ)
+       oplotSMLimit(plt, smLimit, minSM, maxSM)
 
-    # left shaded region for centrals
-    oplotCentralRegion(plt, minR, maxR, minSM, maxSM, smLimit)
+       # left shaded region for centrals
+       oplotCentralRegion(plt, minR, maxR, minSM, maxSM, smLimit)
+
+       plt.minorticks_on()
 
     # axes
     plt.xlim((0,1))
@@ -223,8 +247,6 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, mo
 
     yticks=np.linspace(10,12,num=3)
     plt.yticks((yticks-minSM)/(maxSM-minSM),yticks)
-
-    plt.minorticks_on()
 
     marg=np.array([lmarg,rmarg,bmarg,tmarg])
     return (plt,ax1,marg)
@@ -310,8 +332,100 @@ def oplotGalaxy(ax1, img, rScale, smScale, floor, imSizePlot, c0, rgb, c1, pivot
 
     ax1.imshow(normImg,origin='lower',extent=[rScale-0.5*imSizePlot,rScale+0.5*imSizePlot,smScale-0.5*imSizePlot,smScale+0.5*imSizePlot],interpolation='nearest')
 
-def oplot2dColorbar(plt, nPanels, marg, nColors, nShades, c0, c1, cmap, pivot, cmin, cmax, minColor, maxColor, cbar2d_width):
+def plotGalaxies(data,imDir,fullImSize,imSize,imSizePlot,ax1,minR,maxR,minSM,maxSM,minColor,maxColor,c0,c1,cmap,pivot,cmin,cmax,nShades,legendFlag):
+# take list of galaxies to be plotted
+
+       # record stats of plotted galaxies
+       nCen=0 # number of centrals plotted
+       nShown=0 # total number of galaxies plotted
+       nBelowFloor=0 # number not shown because whole image is below floor
+       nNoSource=0 # number not shown because a source wasn't found in the middle of image
+
+       for ii in range(data.shape[0]):
+
+           # read and manipulate thumbnail image
+           img=fitsio.read(imDir+data['filename'][ii])
+
+           # try to calculate a surface brightness floor based on R_e (not currently used)
+#           colMat=np.resize(range(img.shape[0]),(img.shape[0],img.shape[0]))
+#           rowMat=colMat.T
+#           maxPos=np.unravel_index(np.argmax(img),img.shape)
+#           pixDistMat=np.sqrt((rowMat-maxPos[0])**2 + (colMat-maxPos[1])**2)
+#           reDeg=mrg.rp2deg(data['rgsize'][ii],cosmo.Da(0,data['z'][ii])*1000.)
+#           rePix=reDeg*3600.*img.shape[0]/fullImSize
+#           sel=((pixDistMat > 0.4*rePix) & (pixDistMat < 0.6*rePix))
+#           floor=np.median(img[sel])
+#           print "Re (pixels), Npix, Floor",rePix,len(sel.nonzero()[0]),floor
+
+           floor=0.01
+#           floor=0.01*((1.+zMed)/(1.+1.))**(-4)
+
+           img,imgBelowFloor,noSource=prepareImage(img, imSize, fullImSize, data['theta'][ii], floor)
+
+           if(imgBelowFloor):
+               nBelowFloor+=1
+           elif(noSource):
+               nNoSource+=1
+           else: # image passes cuts
+               nShown+=1
+               if(data['r'][ii] <= 0):
+                   nCen+=1
+                
+               rScale=(data['r'][ii]-minR)/(maxR-minR)
+               smScale=(data['sm'][ii]-minSM)/(maxSM-minSM)
+               colorScale=(data['color'][ii]-minColor)/(maxColor-minColor)
+
+               # define RGB color for this galaxy
+               rgb=(cmap(colorScale))[0:3]
+
+               # plot the galaxy
+               if(legendFlag):
+                  oplotGalaxy(ax1, img, data['r'][ii], data['sm'][ii], floor, imSizePlot, c0, rgb, c1, pivot, cmin, cmax, nShades)
+               else:
+                  oplotGalaxy(ax1, img, rScale, smScale, floor, imSizePlot, c0, rgb, c1, pivot, cmin, cmax, nShades)
+  
+       # print plot stats
+       print "nShown, nCen, nBelowFloor, nNoSource", nShown, nCen, nBelowFloor, nNoSource
+
+def plotMorphLegend(data,imDir,fullImSize,imSize,imSizePlot,ax1,minR,maxR,minSM,maxSM,minColor,maxColor,c0,c1,cmap,pivot,cmin,cmax,nShades):
+
+    # set up color and morph bins
+    colorBins=np.linspace(minColor,maxColor,num=7)
+    morphNames=np.array(["spheroidal","bulge+disk","latedisk"])
+
+    # set up 3 columns
+    xBuffer=0.07
+    yBuffer=0.03
+    xLeft,xRight=ax1.get_xlim()
+    xWidth=(xRight-xLeft-6*xBuffer)/3.
+    xVals=np.array([xLeft+xBuffer+0.5*xWidth,xLeft+3*xBuffer+1.5*xWidth,xLeft+5*xBuffer+2.5*xWidth])
+
+    # trim low mass galaxies
+    smCut=10.
+    sel=(data['sm'] > smCut)
+    data=data[sel]
+
+    for mm in range(morphNames.size):
+       for cc in range(colorBins.size-1):
+           # select a few random galaxies within data
+           nGal=3
+           selData=selectData(data, -1, 10, 0, 20, morphNames[mm]) # data have already been selected in z and Mh range so just set wide limits
+           sel=((selData['color'] > colorBins[cc]) & (selData['color'] <= colorBins[cc+1]))
+           selData=selData[sel]
+
+           if(selData.size < nGal):
+              print "Not enough galaxies for morphology legend in type=",morphNames[mm],colorBins[cc]
+              nGal=selData.size
+           if(nGal > 0):
+              # plot selected galaxies as normal, just changing positions within axes
+              selData[:nGal]['r']=xVals[mm] + np.linspace(-0.5*xWidth,0.5*xWidth,num=nGal)
+              selData[:nGal]['sm']=(selData[:nGal]['color']-minColor)/(maxColor-minColor) * (1.-2.*yBuffer)+yBuffer
+              plotGalaxies(selData[:nGal],imDir,fullImSize,imSize,imSizePlot,ax1,minR,maxR,minSM,maxSM,minColor,maxColor,c0,c1,cmap,pivot,cmin,cmax,nShades,True)
+
+def oplot2dColorbar(plt, nPanels, marg, nColors, nShades, c0, c1, cmap, pivot, cmin, cmax, minColor, maxColor):
     # add a two-dimensional colorbar
+
+    cbar2d_width=0.6 # sets how big the colorbar looks
 
     # set up subplot
     if(nPanels==1): # vertical colorbar on the right
@@ -385,7 +499,7 @@ def oplot2dColorbar(plt, nPanels, marg, nColors, nShades, c0, c1, cmap, pivot, c
     else:
        ax2.imshow(np.transpose(cbar2d_im),origin='lower',extent=[minColor,maxColor,0,cbar2d_width],cmap=my_cmap_2d,interpolation='nearest')
 
-def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph):
+def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph, morphLegend):
 
     # set plot ranges
     minR=-0.15
@@ -396,9 +510,6 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph):
     maxColor=6. # max M(NUV)-M(R) for colorbar
 
 
-    # aesthetics for plotting
-#    floor=0.01 # noise level, fluxes lower than this are dropped
-    cbar2d_width=0.6 # sets how big the colorbar looks
 
     # color params
     pivot=0.6    # (0.-1.) sets flux for max color (lower->white, higher->gray)
@@ -414,15 +525,38 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph):
     cmin=0.25 # 0 -> pure white, higher to leave some color
     cmax=1.0 # 1 -> pure gray/black, lower to leave some color
 
-    # determine number of panels for redshift bins and loop over them
-    nPanels=int(np.round((maxZ-minZ)/zBin))
-    for zz in range(nPanels):
-       thisMinZ=minZ + zz*zBin
-       thisMaxZ=thisMinZ + zBin
+    # read data
+    fullData=readData(imListFile)
 
-       # read data
-       data=readData(imListFile)
-       data=selectData(data, thisMinZ, thisMaxZ, minMh, maxMh, morph) # cut on flag=1, z-range, halo mass, morph
+    # determine number of panels for redshift bins and loop over them
+    zVals=np.arange(minZ,maxZ,zBin)
+    nPanels=zVals.size + morphLegend
+
+    # where should the morphology legend go (if morphLegend==True)
+    morphPanel=4
+    morphZ=np.array([0.4,0.6])
+
+    for zz in range(nPanels):
+       if(morphLegend):
+          if(zz < morphPanel):
+              thisMinZ=minZ + zz*zBin
+              thisMaxZ=thisMinZ + zBin
+              legendFlag=False
+          elif(zz == morphPanel):
+              thisMinZ=morphZ[0]
+              thisMaxZ=morphZ[1]
+              legendFlag=True
+          elif(zz > morphPanel):
+              thisMinZ=minZ + (zz-1)*zBin
+              thisMaxZ=thisMinZ + zBin
+              legendFlag=False
+       else:
+          thisMinZ=minZ + zz*zBin
+          thisMaxZ=thisMinZ + zBin
+          legendFlag=False
+
+       # trim full data to redshift range
+       data=selectData(fullData, thisMinZ, thisMaxZ, minMh, maxMh, morph) # cut on flag=1, z-range, halo mass, morph
        if(data.size == 0):
            print "no data in range"
            return
@@ -431,66 +565,23 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph):
 
        # get image properties
        img=fitsio.read(imDir+data['filename'][0]) # read first one to get params
-       fullImSize=10. # fits file is 10" on a side
-       imSize=mrg.rp2deg(30.,cosmo.Da(0,zMed)*1000)*3600 # plot a square of this size on a side (arcsec)
+       fullImSize=20. # fits file is 20" on a side
+       imSize=mrg.rp2deg(30.,cosmo.Da(0,zMed)*1000)*3600 # plot a square of this size on a side (30 kpc in arcsec)
        imSizePlot=0.2 # fraction of axis range
 
        # set up the plot
-       plt,ax1,marg=setupPlot(thisMinZ, zMed, thisMaxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph, zz, nPanels)
+       plt,ax1,marg=setupPlot(thisMinZ, zMed, thisMaxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, morph, zz, nPanels, legendFlag)
 
-       # record stats of plotted galaxies
-       nCen=0 # number of centrals plotted
-       nShown=0 # total number of galaxies plotted
-       nBelowFloor=0 # number not shown because whole image is below floor
-       nNoSource=0 # number not shown because a source wasn't found in the middle of image
+       if(legendFlag):
+           plotMorphLegend(data,imDir,fullImSize,imSize,imSizePlot,ax1,minR,maxR,minSM,maxSM,minColor,maxColor,c0,c1,cmap,pivot,cmin,cmax,nShades)
+       else:
+           plotGalaxies(data,imDir,fullImSize,imSize,imSizePlot,ax1,minR,maxR,minSM,maxSM,minColor,maxColor,c0,c1,cmap,pivot,cmin,cmax,nShades,legendFlag)
 
-       for ii in range(data.shape[0]):
-
-           # read and manipulate thumbnail image
-           img=fitsio.read(imDir+data['filename'][ii])
-
-           colMat=np.resize(range(img.shape[0]),(img.shape[0],img.shape[0]))
-           rowMat=colMat.T
-           maxPos=np.unravel_index(np.argmax(img),img.shape)
-           pixDistMat=np.sqrt((rowMat-maxPos[0])**2 + (colMat-maxPos[1])**2)
-           reDeg=mrg.rp2deg(data['rgsize'][ii],cosmo.Da(0,data['z'][ii])*1000.)
-           rePix=reDeg*3600.*img.shape[0]/fullImSize
-           sel=((pixDistMat > 0.4*rePix) & (pixDistMat < 0.6*rePix))
-#           floor=np.median(img[sel])
-#           print "Re (pixels), Npix, Floor",rePix,len(sel.nonzero()[0]),floor
-
-           floor=0.01
-#           floor=0.01*((1.+zMed)/(1.+1.))**(-4)
-
-           img,imgBelowFloor,noSource=prepareImage(img, imSize, fullImSize, data['theta'][ii], floor)
-
-           if(imgBelowFloor):
-               nBelowFloor+=1
-           elif(noSource):
-               nNoSource+=1
-           else: # image passes cuts
-               nShown+=1
-               if(data['r'][ii] <= 0):
-                   nCen+=1
-                
-               rScale=(data['r'][ii]-minR)/(maxR-minR)
-               smScale=(data['sm'][ii]-minSM)/(maxSM-minSM)
-               colorScale=(data['color'][ii]-minColor)/(maxColor-minColor)
-
-               # define RGB color for this galaxy
-               rgb=(cmap(colorScale))[0:3]
-
-               # plot the galaxy
-               oplotGalaxy(ax1, img, rScale, smScale, floor, imSizePlot, c0, rgb, c1, pivot, cmin, cmax, nShades)
-       #end for loop over galaxies
-
-       # print plot stats
-       print "nShown, nCen, nBelowFloor, nNoSource", nShown, nCen, nBelowFloor, nNoSource
 
     # end loop over redshift bins / plot panels
 
     # plot the 2d colorbar
-    oplot2dColorbar(plt, nPanels, marg, nColors, nShades, c0, c1, cmap, pivot, cmin, cmax, minColor, maxColor, cbar2d_width)
+    oplot2dColorbar(plt, nPanels, marg, nColors, nShades, c0, c1, cmap, pivot, cmin, cmax, minColor, maxColor)
     
     # save figure
     plt.savefig(plotFile,dpi=300)
@@ -499,19 +590,20 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph):
 # MAIN - if plotgalSMvR.py is called from command line
 if __name__ == '__main__':
     import sys
-    if(len(sys.argv)!=10):
-        print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile minZ maxZ zBin minMh maxMh morph"
+    if(len(sys.argv)!=11):
+        print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile minZ maxZ zBin minMh maxMh morph morphLegend"
         exit
 
-    imDir=sys.argv[1]
-    imListFile=sys.argv[2]
-    plotFile=sys.argv[3]
+    imDir=sys.argv[1] # str
+    imListFile=sys.argv[2] # str
+    plotFile=sys.argv[3] # str
     minZ=float(sys.argv[4])
     maxZ=float(sys.argv[5])
     zBin=float(sys.argv[6])
     minMh=float(sys.argv[7])
     maxMh=float(sys.argv[8])
-    morph=sys.argv[9]
+    morph=sys.argv[9] # str
+    morphLegend=(sys.argv[10] in ["True","true","T","t","TRUE"]) # bool
 
-    main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph)
+    main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph, morphLegend)
     
