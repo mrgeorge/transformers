@@ -250,7 +250,7 @@ def setupRadPlot(zbins,smbins):
 
 #    plt.xlabel(r'R/R$_{200{\rm c}}$',fontsize='medium')
 #    plt.ylabel(r'Fraction $|_{\rm M_{\star},z}$',fontsize='medium')
-    fig.text(0.5,0.02,r'R/R$_{200{\rm c}}$',horizontalalignment='center',rotation='horizontal',fontsize='medium')
+    fig.text(0.5,0.02,r'Distance from Group Center [R/R$_{200{\rm c}}$]',horizontalalignment='center',rotation='horizontal',fontsize='medium')
     fig.text(0.03,0.5,r'Fraction $|_{\rm M_{\star},z}$',verticalalignment='center',rotation='vertical',fontsize='medium')
     plt.xlim((-0.1,1.1))
     plt.ylim((-0.03,0.68))
@@ -275,7 +275,7 @@ def oplotRad(ax,arr,sm,zz,rad,errflag,labelflag):
           errs=np.repeat(None,nsplit)
 
      if(labelflag == 1):
-          labels=np.array(['Red Spheroidal','Red Bulge+Disk','Red Disk','Blue Spheroidal','Blue Bulge+Disk','Blue Disk'])
+          labels=np.array(['Red Spheroidal','Red Bulge+Disk','Red Late Disk','Blue Spheroidal','Blue Bulge+Disk','Blue Late Disk'])
      else:
           labels=np.repeat(None,nsplit)
           
@@ -359,7 +359,7 @@ def setupBamfordPlot(zbins):
     fig,axarr=plt.subplots(zbins.size-1,2,sharex=True,sharey=True)
     fig.subplots_adjust(hspace=0,wspace=0)
 
-    fig.text(0.5,0.02,r'R/R$_{200{\rm c}}$',horizontalalignment='center',rotation='horizontal',fontsize='medium')
+    fig.text(0.5,0.02,r'Distance from Group Center [R/R$_{200{\rm c}}$]',horizontalalignment='center',rotation='horizontal',fontsize='medium')
     fig.text(0.03,0.5,r'Fraction $|_{\rm M_{\star},z}$',verticalalignment='center',rotation='vertical',fontsize='medium')
     plt.xlim((-0.1,1.1))
     plt.ylim((-0.03,1.03))
@@ -593,9 +593,9 @@ if __name__ == '__main__':
 
     minz=0.2
     maxz=1.0
-    minmh=13.0
-    maxmh=14.0
-    ztype="zb" # use zb for zbest (i.e. specz if available), else zp for photoz only
+    minmh=12.0
+    maxmh=15.0
+    ztype="zp" # use zb for zbest (i.e. specz if available), else zp for photoz only
 
     plotDir="../plots/"
 
