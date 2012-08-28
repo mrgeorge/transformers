@@ -56,8 +56,8 @@ for ii=0,n_elements(acs)-1 do begin
           acs[ii].group_flag_best,$
           acs[ii].alpha_j2000,$
           acs[ii].delta_j2000,$
-          acs[ii].zphot,$
           acs[ii].photoz_non_comb,$
+          acs[ii].zphot,$
           acs[ii].p_mem_best,$
           acs[ii].p_mem_best_specz,$
           acs[ii].kevin_mstar,$
