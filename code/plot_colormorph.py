@@ -252,7 +252,7 @@ def setupRadPlot(zbins,smbins):
 #    plt.ylabel(r'Fraction $|_{\rm M_{\star},z}$',fontsize='medium')
     fig.text(0.5,0.02,r'Distance from Group Center [R/R$_{200{\rm c}}$]',horizontalalignment='center',rotation='horizontal',fontsize='medium')
     fig.text(0.03,0.5,r'Fraction $|_{\rm M_{\star},z}$',verticalalignment='center',rotation='vertical',fontsize='medium')
-    plt.xlim((-0.1,1.1))
+    plt.xlim((-0.1,1.19))
     plt.ylim((-0.03,0.68))
 
     # hide x ticks for top plots and y ticks for right plots
@@ -327,13 +327,16 @@ def makeRadPlot(plotFile,zbins,smbins,complete,sat,satCorr,field,cen):
 # plot fractions of color/morph types vs R/R200 in separate panels for z and SM bins
 
     axarr=setupRadPlot(zbins,smbins)
+    cenRad=0.
+    fieldRad=1.1
+
     for sm in range(smbins.size-1):
          for zz in range(zbins.size-1):
               if(complete[sm,zz]==1):
                    oplotRad(axarr[zz,sm],sat,sm,zz,satRad,1,1)
                    oplotRad(axarr[zz,sm],satCorr,sm,zz,satRad,0,0)
-                   oplotRad(axarr[zz,sm],field,sm,zz,1.,1,0)
-                   oplotRad(axarr[zz,sm],cen,sm,zz,0.,1,0)
+                   oplotRad(axarr[zz,sm],field,sm,zz,fieldRad,1,0)
+                   oplotRad(axarr[zz,sm],cen,sm,zz,cenRad,1,0)
 
                    if(zz==0):
                         setSMTitle(axarr[zz,sm],smbins,sm)
@@ -345,6 +348,20 @@ def makeRadPlot(plotFile,zbins,smbins,complete,sat,satCorr,field,cen):
 
     plotRadLegend()
     plt.savefig(plotFile)
+
+def oplotBrokenAxis(axarr,xBreak,xWidth):
+     # from http://stackoverflow.com/questions/5656798/python-matplotlib-is-there-a-way-to-make-a-discontinuous-axis
+
+     ds=0.015 # how big to make the diagonal lines in axes coordinates
+     # arguments to pass plot, just so we don't keep repeating them
+     kwargs = dict(color='black', clip_on=False)
+
+     for ax in axarr.flat: 
+          yMin,yMax=ax.axes.get_ylim()
+          ax.plot((xBreak-ds,xBreak+ds),(yMin-ds,yMin+ds), **kwargs) # left diagonal
+          ax.plot((xBreak+xWidth-ds,xBreak+xWidth+ds),(yMin-ds,yMin+ds), **kwargs) # right diagonal
+          ax.plot((xBreak-ds,xBreak+ds),(yMax-ds,yMax+ds), **kwargs) # left diagonal
+          ax.plot((xBreak+xWidth-ds,xBreak+xWidth+ds),(yMax-ds,yMax+ds), **kwargs) # right diagonal
 
 def setupBamfordPlot(zbins):
     # use helvetica and latex
@@ -361,12 +378,17 @@ def setupBamfordPlot(zbins):
 
     fig.text(0.5,0.02,r'Distance from Group Center [R/R$_{200{\rm c}}$]',horizontalalignment='center',rotation='horizontal',fontsize='medium')
     fig.text(0.03,0.5,r'Fraction $|_{\rm M_{\star},z}$',verticalalignment='center',rotation='vertical',fontsize='medium')
-    plt.xlim((-0.1,1.1))
+    plt.xlim((-0.03,1.19))
     plt.ylim((-0.03,1.03))
 
     # hide x ticks for top plots and y ticks for right plots
     plt.setp([[a.get_xticklabels() for a in axarr[b,:]] for b in range(0,zbins.size-2)], visible=False)
     plt.setp([a.get_yticklabels() for a in axarr[:,1]], visible=False)
+
+    # overlay "broken axis symbol"
+#    xBreak=1.05
+#    xWidth=0.03
+#    oplotBrokenAxis(axarr,xBreak,xWidth)
 
     return axarr
 
@@ -410,11 +432,14 @@ def makeBamfordPlot(plotFile,zbins,smbins,complete,sat,satCorr,field,cen):
 # plot red frac and early type frac vs R/R200 with separate curves for different SM and separate panels for different z
 
     axarr=setupBamfordPlot(zbins)
+    cenRad=0.
+    fieldRad=1.1
+    
     for zz in range(zbins.size-1):
          oplotBamford(axarr[zz,:],complete,smbins,sat,zz,satRad,1,1)
          oplotBamford(axarr[zz,:],complete,smbins,satCorr,zz,satRad,0,0)
-         oplotBamford(axarr[zz,:],complete,smbins,field,zz,1.,1,0)
-         oplotBamford(axarr[zz,:],complete,smbins,cen,zz,0.,1,0)
+         oplotBamford(axarr[zz,:],complete,smbins,field,zz,fieldRad,1,0)
+         oplotBamford(axarr[zz,:],complete,smbins,cen,zz,cenRad,1,0)
 
          if(zz==0):
               setBamfordTitle(axarr[zz,:])
@@ -422,6 +447,7 @@ def makeBamfordPlot(plotFile,zbins,smbins,complete,sat,satCorr,field,cen):
 
     plt.sca(axarr[0,0])
     plotBamfordLegend()     
+
     plt.savefig(plotFile)
 
 def readCatalogs(acsFile,groupFile):
@@ -593,8 +619,8 @@ if __name__ == '__main__':
 
     minz=0.2
     maxz=1.0
-    minmh=12.0
-    maxmh=15.0
+    minmh=13.0
+    maxmh=14.0
     ztype="zp" # use zb for zbest (i.e. specz if available), else zp for photoz only
 
     plotDir="../plots/"
