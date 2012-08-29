@@ -228,6 +228,12 @@ def setupPlot(minZ, zMed, maxZ, imSize, imSizePlot, minR, maxR, minSM, maxSM, mo
        plt.setp(ax1.get_xticklines(),visible=False)
        plt.setp(ax1.get_yticklines(),visible=False)
        plt.minorticks_off()
+       axThick=5
+       axColor='black'
+       ax1.axhline(linewidth=axThick,color=axColor)
+       ax1.axvline(linewidth=axThick,color=axColor)
+       ax1.axhline(y=1,linewidth=axThick,color=axColor)
+       ax1.axvline(x=1,linewidth=axThick,color=axColor)
     else:
        # z range text (upper right)
        xText=0.95
@@ -407,8 +413,8 @@ def plotMorphLegend(data,imDir,fullImSize,imSize,imSizePlot,ax1,minR,maxR,minSM,
     morphNames=np.array(["spheroidal","bulge+disk","latedisk"])
 
     # set up 3 columns
-    xBuffer=0.07
-    yBuffer=0.03
+    xBuffer=0.09
+    yBuffer=0.04
     xLeft,xRight=ax1.get_xlim()
     xWidth=(xRight-xLeft-6*xBuffer)/3.
     xVals=np.array([xLeft+xBuffer+0.5*xWidth,xLeft+3*xBuffer+1.5*xWidth,xLeft+5*xBuffer+2.5*xWidth])
