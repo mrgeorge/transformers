@@ -752,6 +752,8 @@ if __name__ == '__main__':
     smbins=np.array([9.8,10.3,10.7,11.5])
     zbins=np.array([0.2,0.8,1.0])
     complete=np.array([[1,0],[1,1],[1,1]]) # update by hand with smbins, zbins
+#    zbins=np.array([0.2,0.5,0.8,1.0])
+#    complete=np.array([[1,1,0],[1,1,1],[1,1,1]]) # update by hand with smbins, zbins
 
     cbins=np.array([-1.,3.5,7.])
     mbins=np.array([-0.5,0.5,1.5,2.5,3.5])
