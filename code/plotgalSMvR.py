@@ -43,7 +43,7 @@ def readData(imListFile):
 
     return data
 
-def selectData(data, minZ, maxZ, minMh, maxMh, morph,zType):
+def selectData(data, minZ, maxZ, minMh, maxMh, colorSel, morph,zType):
 
     minP=0.5 # membership probability cut
 
@@ -63,7 +63,7 @@ def selectData(data, minZ, maxZ, minMh, maxMh, morph,zType):
     data=data[sel]
 
     if(morph == "all"):
-       return data
+       sel=range(data.size)
     elif(morph == "spheroidal"):
        sel=((data['ztype'] == 1) |
             ((data['ztype'] == 2) & (data['zbulge'] == 0)))
@@ -78,6 +78,21 @@ def selectData(data, minZ, maxZ, minMh, maxMh, morph,zType):
             (data['zbulge'] == 3))
     elif(morph == "irr"):
        sel=(data['ztype'] == 3)
+
+    data=data[sel]
+
+
+    if(colorSel =="all"):
+       sel=range(data.size)
+    elif(colorSel == "red"):
+       sel=(data['color'] > 3.5)
+    elif(colorSel == "green"):
+       sel=((data['color'] > 1.2) &
+            (data['color'] < 3.5))
+    elif(colorSel == "blue"):
+       sel=(data['color'] < 1.2)
+    elif(colorSel == "notRed"):
+       sel=(data['color'] < 3.5)
 
     data=data[sel]
 
@@ -428,7 +443,7 @@ def plotMorphLegend(data,imDir,fullImSize,imSize,imSizePlot,ax1,minR,maxR,minSM,
        for cc in range(colorBins.size-1):
            # select a few random galaxies within data
            nGal=3
-           selData=selectData(data, -1, 10, 0, 20, morphNames[mm], zType) # data have already been selected in z and Mh range so just set wide limits
+           selData=selectData(data, -1, 10, 0, 20, morphNames[mm], "all", zType) # data have already been selected in z and Mh range so just set wide limits
            sel=((selData['color'] > colorBins[cc]) & (selData['color'] <= colorBins[cc+1]))
            selData=selData[sel]
 
@@ -518,7 +533,7 @@ def oplot2dColorbar(plt, nPanels, marg, nColors, nShades, c0, c1, cmap, pivot, c
     else:
        ax2.imshow(np.transpose(cbar2d_im),origin='lower',extent=[minColor,maxColor,0,cbar2d_width],cmap=my_cmap_2d,interpolation='nearest')
 
-def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph, morphLegend, zType):
+def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, colorSel, morph, morphLegend, zType):
 
     # set plot ranges
     minR=-0.15
@@ -575,7 +590,7 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph, mor
           legendFlag=False
 
        # trim full data to redshift range
-       data=selectData(fullData, thisMinZ, thisMaxZ, minMh, maxMh, morph, zType) # cut on flag=1, z-range, halo mass, morph
+       data=selectData(fullData, thisMinZ, thisMaxZ, minMh, maxMh, colorSel, morph, zType) # cut on flag=1, z-range, halo mass, color, morph
        if(data.size == 0):
            print "no data in range"
            return
@@ -614,8 +629,8 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph, mor
 # MAIN - if plotgalSMvR.py is called from command line
 if __name__ == '__main__':
     import sys
-    if(len(sys.argv)!=12):
-        print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile minZ maxZ zBin minMh maxMh morph morphLegend zType"
+    if(len(sys.argv)!=13):
+        print "Calling sequence: plotgalSMvR.py imDir imListFile plotFile minZ maxZ zBin minMh maxMh colorSel morph morphLegend zType"
         exit
 
     imDir=sys.argv[1] # str
@@ -626,8 +641,9 @@ if __name__ == '__main__':
     zBin=float(sys.argv[6])
     minMh=float(sys.argv[7])
     maxMh=float(sys.argv[8])
-    morph=sys.argv[9] # str
-    morphLegend=(sys.argv[10] in ["True","true","T","t","TRUE"]) # bool
-    zType=sys.argv[11] # str zb for zbest, zp for photoz only
+    colorSel=sys.argv[9] # str
+    morph=sys.argv[10] # str
+    morphLegend=(sys.argv[11] in ["True","true","T","t","TRUE"]) # bool
+    zType=sys.argv[12] # str zb for zbest, zp for photoz only
 
-    main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, morph, morphLegend, zType)
+    main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, colorSel, morph, morphLegend, zType)
