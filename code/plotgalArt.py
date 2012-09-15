@@ -9,7 +9,7 @@ minZ=0.2
 maxZ=0.6
 zMed=np.median([minZ,maxZ])
 minSM=9.6
-maxSM=10.1
+maxSM=10.3
 minMh=12.0
 maxMh=15.0
 morph="all"
@@ -71,5 +71,5 @@ for oo in fig.findobj():
     oo.set_clip_on(False)
 
 figSize=(10,10)
-plt.savefig("../plots/transformers.pdf",bbox_inches="tight",dpi=300,figsize=figSize)
+plt.savefig("../plots/transformers.pdf",bbox_inches="tight",dpi=600,figsize=figSize)
 
