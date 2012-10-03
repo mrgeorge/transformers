@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg') # must appear before importing pyplot to get plots w/o GUI
 import matplotlib.pyplot as plt
+import string
 
 def cleanCatalogs(acs,group,minz,maxz,ztype):
 
@@ -19,6 +20,7 @@ def cleanCatalogs(acs,group,minz,maxz,ztype):
          (acs['MAG_AUTO'] < 24.2) &
          (acs['GOOD_ZPHOT_LENS'] == 1) &
          (acs['MU_CLASS'] == 1))
+         #         (acs['TYPE'] == 0)) # added 9/26/12 to remove masked regions/X-ray sources/star SED types from Ilbert's catalog
     acs=acs[sel]
 
     sel=((group['FLAG_INCLUDE'] == 1) &
@@ -41,20 +43,49 @@ def assignHaloMass(acs,group,ztype):
         
     return halomass
 
-def assignMorph(zestType,zestBulge):
+def assignMorph(zestType=None,zestBulge=None,tasca1=None,tasca2=None,tasca3=None):
 
-    morph=np.zeros(zestType.size)
+    if(zestType != None):
+         morph=np.zeros(zestType.size)
 
-    early=((zestType == 1) |
-         ((zestType == 2) & (zestBulge == 0)))
-    edisk=((zestType == 2) &
-           (zestBulge == 1))
-    ldisk=((zestType == 2) &
-           ((zestBulge == 2) | (zestBulge ==3)))
+         early=((zestType == 1) |
+               ((zestType == 2) & (zestBulge == 0)))
+         edisk=((zestType == 2) &
+                (zestBulge == 1))
+         ldisk=((zestType == 2) &
+               ((zestBulge == 2) | (zestBulge ==3)))
 
-    morph[early]=1
-    morph[edisk]=2
-    morph[ldisk]=3
+         morph[early]=1
+         morph[edisk]=2
+         morph[ldisk]=3
+
+    elif(tasca1 != None):
+         morph=np.zeros(tasca1.size)
+
+         ell=(tasca1 == 1)
+         spiral=(tasca1 == 2)
+         irr=(tasca1 == 3)
+
+         morph[ell]=1
+         morph[spiral]=3
+    elif(tasca2 != None):
+         morph=np.zeros(tasca2.size)
+
+         ell=(tasca2 == 1)
+         spiral=(tasca2 == 2)
+         irr=(tasca2 == 3)
+
+         morph[ell]=1
+         morph[spiral]=3
+    elif(tasca3 != None):
+         morph=np.zeros(tasca3.size)
+
+         ell=(tasca3 == 1)
+         spiral=(tasca3 == 2)
+         irr=(tasca3 == 3)
+
+         morph[ell]=1
+         morph[spiral]=3
 
     # irreg and unclassified remain 0
     return morph
@@ -727,6 +758,25 @@ def contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins,z
 
      return satCorr
                          
+def printCensusTable(censusTableFile,cen,sat,field,zbins,smbins):
+
+     out=open(censusTableFile,'w')
+
+     out.write("% written by printCensusTable in plot_colormorph.py\n")
+     out.write("% remove incomplete sections by hand\n")
+
+     nzbins=zbins.size-1
+     nsmbins=smbins.size-1
+
+     for zz in range(nzbins):
+          out.write("\sidehead{$z={}-{}$}\n".format(zbins[zz],zbins[zz+1]))
+          out.write("Centrals & "+ string.join([str(int(cen[sm][zz][0][0])) for sm in range(nsmbins)], " & ") + " \\\\ \n")
+          out.write("Satellites & "+ string.join([str(int(sat[sm][zz][0][0][0])) for sm in range(nsmbins)], " & ") + " \\\\ \n")
+          out.write("Field & "+ string.join([str(int(field[sm][zz][0][0])) for sm in range(nsmbins)], " & ") + " \\\\ \n")
+
+
+
+
 # MAIN - if called from command line
 if __name__ == '__main__':
 
@@ -739,14 +789,15 @@ if __name__ == '__main__':
     plotDir="../plots/"
 
     # read group and galaxy catalogs
-    acsFile="../../code/lensing18_20110914.fits"
+    acsFile="../../code/lensing18_20110914_morph.fits"
     groupFile="../../code/group5_20110914.fits"
     acs,group=readCatalogs(acsFile,groupFile)
     acs,group=cleanCatalogs(acs,group,minz,maxz,ztype)
 
     # assign halo mass and single morph class for each galaxy
     halomass=assignHaloMass(acs,group,ztype)
-    morph=assignMorph(acs['ZEST_TYPE'],acs['ZEST_BULGE'])
+    #    morph=assignMorph(zestType=acs['ZEST_TYPE'],zestBulge=acs['ZEST_BULGE'])
+    morph=assignMorph(tasca3=acs['MORPH_TASCA3'])
 
     # setup bins in SM, z, color, morphology, and group-centric radius
     smbins=np.array([9.8,10.3,10.7,11.5])
@@ -763,17 +814,17 @@ if __name__ == '__main__':
     zVals=[np.median((zbins[zz],zbins[zz+1])) for zz in range(zbins.size-1)]
 
     # put galaxies in grid of bins
-    cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
+    #    cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
 
     # apply corrections to the satellite population for contamination from field galaxies
-    satCorr=contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins,ztype)
+    #    satCorr=contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
     # make plot of fraction of color/morph types vs R/R200 with separate panels for each SM, z bin.
-    radPlotFile=plotDir+"satrad_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
-    makeRadPlot(radPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
+    #    radPlotFile=plotDir+"satrad_tasca3_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
+    #    makeRadPlot(radPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
 
-    bamfordPlotFile=plotDir+"bamford_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
-    makeBamfordPlot(bamfordPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
+    #    bamfordPlotFile=plotDir+"bamford_tasca3_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
+    #    makeBamfordPlot(bamfordPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
 
 
     # now make different bins for the plot of z-dependence
@@ -793,11 +844,29 @@ if __name__ == '__main__':
     zVals=[np.median((zbins[zz],zbins[zz+1])) for zz in range(zbins.size-1)]
 
     # put galaxies in grid of bins
-    cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
+    #    cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
 
     # apply corrections to the satellite population for contamination from field galaxies
-    satCorr=contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins,ztype)
+    #    satCorr=contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
 
-    zPlotFile=plotDir+"satz_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
-    makeZPlot(zPlotFile,smbins,rbins,zVals,complete,sat,satCorr,field,cen)
+    #    zPlotFile=plotDir+"satz_tasca3_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
+    #    makeZPlot(zPlotFile,smbins,rbins,zVals,complete,sat,satCorr,field,cen)
+
+
+
+    # a different binning for census table
+    minmh=13.0
+    maxmh=14.0
+
+    smbins=np.array([9.8,10.3,10.7,11.5,15.0]) # last bin is to get all centrals >11.5
+    zbins=np.array([0.2,0.5,0.8,1.0])
+
+    cbins=np.array([-1.,7.]) # all
+    mbins=np.array([-0.5,3.5]) # all
+    rbins=np.array([0.01,1.0]) # all
+
+    cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
+
+    censusTableFile=plotDir+"census_{}_mh{}-{}.tex".format(ztype,minmh,maxmh)
+    printCensusTable(censusTableFile,cen,sat,field,zbins,smbins)
