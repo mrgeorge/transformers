@@ -43,6 +43,30 @@ def assignHaloMass(acs,group,ztype):
         
     return halomass
 
+def assignColour(acs,ilbertQuench=False,ilbertColor=False,kevinQuench=False):
+# spelling note: for this array use colour to avoid confusion with e.g. plotting color
+# ilbertQuench = extinction-corrected rest-frame template color
+# ilbertColor = evolving color cut, no dust correction
+# kevinQuench = NUV-R, R-J color-color cut from his quench catalog
+
+    colour=np.zeros(acs.size)
+
+    if(ilbertQuench == True):
+        blue=acs['MNUV_MR'] < 3.5
+        red=acs['MNUV_MR'] >= 3.5
+        colour[blue]=0
+        colour[red]=1
+
+    elif(ilbertColor == True):
+        blue=(acs['MNUV']-acs['MR'] < 0.5*acs['KEVIN_MSTAR'] - 0.8*acs['PHOTOZ_NON_COMB'] - 0.5)
+        red=(acs['MNUV']-acs['MR'] >= 0.5*acs['KEVIN_MSTAR'] - 0.8*acs['PHOTOZ_NON_COMB'] - 0.5)
+        bad=((acs['MNUV'] < -30) | (acs['MR'] < -30)) # small number flagged as -99, so not a good color
+        colour[blue]=0
+        colour[red]=1
+        colour[bad]=-1
+
+    return colour
+
 def assignMorph(zestType=None,zestBulge=None,tasca1=None,tasca2=None,tasca3=None):
 
     if(zestType != None):
@@ -90,7 +114,7 @@ def assignMorph(zestType=None,zestBulge=None,tasca1=None,tasca2=None,tasca3=None
     # irreg and unclassified remain 0
     return morph
 
-def census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype):
+def census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype):
 
     nSMbins=smbins.size-1
     nzbins=zbins.size-1
@@ -127,8 +151,8 @@ def census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,z
                             (acs['KEVIN_MSTAR'] < smbins[sm+1]) &
                             (acs[zphot] >= zbins[zz]) &
                             (acs[zphot] < zbins[zz+1]) &
-                            (acs['MNUV_MR'] >= cbins[cc]) &
-                            (acs['MNUV_MR'] < cbins[cc+1]) &
+                            (colour >= cbins[cc]) &
+                            (colour < cbins[cc+1]) &
                             (morph >= mbins[mm]) &
                             (morph < mbins[mm+1]))
                     fieldsel=((acs[pMem] <= 0) &
@@ -136,8 +160,8 @@ def census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,z
                               (acs['KEVIN_MSTAR'] < smbins[sm+1]) &
                               (acs[zphot] >= zbins[zz]) &
                               (acs[zphot] < zbins[zz+1]) &
-                              (acs['MNUV_MR'] >= cbins[cc]) &
-                              (acs['MNUV_MR'] < cbins[cc+1]) &
+                              (colour >= cbins[cc]) &
+                              (colour < cbins[cc+1]) &
                               (morph >= mbins[mm]) &
                               (morph < mbins[mm+1]))
 
@@ -154,8 +178,8 @@ def census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,z
                                 (acs['KEVIN_MSTAR'] < smbins[sm+1]) &
                                 (acs[zphot] >= zbins[zz]) &
                                 (acs[zphot] < zbins[zz+1]) &
-                                (acs['MNUV_MR'] >= cbins[cc]) &
-                                (acs['MNUV_MR'] < cbins[cc+1]) &
+                                (colour >= cbins[cc]) &
+                                (colour < cbins[cc+1]) &
                                 (morph >= mbins[mm]) &
                                 (morph < mbins[mm+1]) &
                                 (acs[distBCG] >= rbins[rr]) &
@@ -237,17 +261,17 @@ def getCMFracRad(arr,sm,zz,nsplit):
     tot=sliceArr(arr,sm=sm,zz=zz,cc=-2,mm=-2,rr=-1)
 
     if(nsplit==6):
-         rearly=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=1,rr=-1)
-         redisk=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=2,rr=-1)
-         rldisk=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=3,rr=-1)
-         bearly=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=1,rr=-1)
-         bedisk=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=2,rr=-1)
-         bldisk=sliceArr(arr,sm=sm,zz=zz,cc=0,mm=3,rr=-1)
+         rearly=sliceArr(arr,sm=sm,zz=zz,cc=2,mm=1,rr=-1)
+         redisk=sliceArr(arr,sm=sm,zz=zz,cc=2,mm=2,rr=-1)
+         rldisk=sliceArr(arr,sm=sm,zz=zz,cc=2,mm=3,rr=-1)
+         bearly=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=1,rr=-1)
+         bedisk=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=2,rr=-1)
+         bldisk=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=3,rr=-1)
 
          return (1.*rearly/tot,1.*redisk/tot,1.*rldisk/tot,1.*bearly/tot,1.*bedisk/tot,1.*bldisk/tot,tot)
 
     elif(nsplit==2):
-         red=sliceArr(arr,sm=sm,zz=zz,cc=1,mm=-2,rr=-1)
+         red=sliceArr(arr,sm=sm,zz=zz,cc=2,mm=-2,rr=-1)
          early=sliceArr(arr,sm=sm,zz=zz,cc=-2,mm=1,rr=-1)
 
          return (1.*red/tot,1.*early/tot,tot)
@@ -291,17 +315,17 @@ def getCMFracZ(arr,sm,rr,nsplit):
     tot=sliceArr(arr,sm=sm,zz=-1,cc=-2,mm=-2,rr=rrInd)
 
     if(nsplit==6):
-         rearly=sliceArr(arr,sm=sm,zz=-1,cc=1,mm=1,rr=rrInd)
-         redisk=sliceArr(arr,sm=sm,zz=-1,cc=1,mm=2,rr=rrInd)
-         rldisk=sliceArr(arr,sm=sm,zz=-1,cc=1,mm=3,rr=rrInd)
-         bearly=sliceArr(arr,sm=sm,zz=-1,cc=0,mm=1,rr=rrInd)
-         bedisk=sliceArr(arr,sm=sm,zz=-1,cc=0,mm=2,rr=rrInd)
-         bldisk=sliceArr(arr,sm=sm,zz=-1,cc=0,mm=3,rr=rrInd)
+         rearly=sliceArr(arr,sm=sm,zz=-1,cc=2,mm=1,rr=rrInd)
+         redisk=sliceArr(arr,sm=sm,zz=-1,cc=2,mm=2,rr=rrInd)
+         rldisk=sliceArr(arr,sm=sm,zz=-1,cc=2,mm=3,rr=rrInd)
+         bearly=sliceArr(arr,sm=sm,zz=-1,cc=1,mm=1,rr=rrInd)
+         bedisk=sliceArr(arr,sm=sm,zz=-1,cc=1,mm=2,rr=rrInd)
+         bldisk=sliceArr(arr,sm=sm,zz=-1,cc=1,mm=3,rr=rrInd)
 
          return (1.*rearly/tot,1.*redisk/tot,1.*rldisk/tot,1.*bearly/tot,1.*bedisk/tot,1.*bldisk/tot,tot)
 
     elif(nsplit==2):
-         red=sliceArr(arr,sm=sm,zz=-1,cc=1,mm=-2,rr=rrInd)
+         red=sliceArr(arr,sm=sm,zz=-1,cc=2,mm=-2,rr=rrInd)
          early=sliceArr(arr,sm=sm,zz=-1,cc=-2,mm=1,rr=rrInd)
 
          return (1.*red/tot,1.*early/tot,tot)
@@ -698,7 +722,7 @@ def getContamination(rbins):
 
      return (purity,completeness,magVals)
 
-def getMags(acs,morph,smbins,zbins,cbins,mbins,ztype):
+def getMags(acs,colour,morph,smbins,zbins,cbins,mbins,ztype):
 
      nSMbins=smbins.size-1
      nzbins=zbins.size-1
@@ -720,19 +744,19 @@ def getMags(acs,morph,smbins,zbins,cbins,mbins,ztype):
                                    (acs['KEVIN_MSTAR'] < smbins[sm+1]) &
                                    (acs[zphot] >= zbins[zz]) &
                                    (acs[zphot] < zbins[zz+1]) &
-                                   (acs['MNUV_MR'] >= cbins[cc]) &
-                                   (acs['MNUV_MR'] < cbins[cc+1]) &
+                                   (colour >= cbins[cc]) &
+                                   (colour < cbins[cc+1]) &
                                    (morph >= mbins[mm]) &
                                    (morph < mbins[mm+1]))
                          mags[sm][zz][cc][mm]=np.median(acs[sel]['MAG_AUTO'])
 
      return mags
 
-def contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins,ztype):
+def contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype):
 
      satCorr=sat.copy() # make a copy to avoid changing sat
 
-     mags=getMags(acs,morph,smbins,zbins,cbins,mbins,ztype)
+     mags=getMags(acs,colour,morph,smbins,zbins,cbins,mbins,ztype)
      purity,completeness,magVals=getContamination(rbins)
 
      nSMbins=smbins.size-1
@@ -794,10 +818,10 @@ if __name__ == '__main__':
     acs,group=readCatalogs(acsFile,groupFile)
     acs,group=cleanCatalogs(acs,group,minz,maxz,ztype)
 
-    # assign halo mass and single morph class for each galaxy
+    # assign halo mass, colour class, and single morph class for each galaxy
     halomass=assignHaloMass(acs,group,ztype)
-    #    morph=assignMorph(zestType=acs['ZEST_TYPE'],zestBulge=acs['ZEST_BULGE'])
-    morph=assignMorph(tasca3=acs['MORPH_TASCA3'])
+    colour=assignColour(acs,ilbertColor=True)
+    morph=assignMorph(zestType=acs['ZEST_TYPE'],zestBulge=acs['ZEST_BULGE'])
 
     # setup bins in SM, z, color, morphology, and group-centric radius
     smbins=np.array([9.8,10.3,10.7,11.5])
@@ -806,25 +830,25 @@ if __name__ == '__main__':
 #    zbins=np.array([0.2,0.5,0.8,1.0])
 #    complete=np.array([[1,1,0],[1,1,1],[1,1,1]]) # update by hand with smbins, zbins
 
-    cbins=np.array([-1.,3.5,7.])
-    mbins=np.array([-0.5,0.5,1.5,2.5,3.5])
+    cbins=np.array([-2.5,-0.5,0.5,1.5]) # -2=missing, -1=bad, 0=blue,1=red
+    mbins=np.array([-0.5,0.5,1.5,2.5,3.5]) # 0=missing/bad, 1=spheroidal, 2=bulge+disk, 3=late disk
     rbins=np.array([0.01,0.33,0.66,1.0])
 
     satRad=[np.median((rbins[rr],rbins[rr+1])) for rr in range(rbins.size-1)]
     zVals=[np.median((zbins[zz],zbins[zz+1])) for zz in range(zbins.size-1)]
 
     # put galaxies in grid of bins
-    #    cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
+    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
 
     # apply corrections to the satellite population for contamination from field galaxies
-    #    satCorr=contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins,ztype)
+    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
     # make plot of fraction of color/morph types vs R/R200 with separate panels for each SM, z bin.
-    #    radPlotFile=plotDir+"satrad_tasca3_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
-    #    makeRadPlot(radPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
+    radPlotFile=plotDir+"satrad_oiC_zest_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
+    makeRadPlot(radPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
 
-    #    bamfordPlotFile=plotDir+"bamford_tasca3_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
-    #    makeBamfordPlot(bamfordPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
+    bamfordPlotFile=plotDir+"bamford_oiC_zest_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
+    makeBamfordPlot(bamfordPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
 
 
     # now make different bins for the plot of z-dependence
@@ -836,7 +860,7 @@ if __name__ == '__main__':
     zbins=np.array([0.2,0.5,0.8,1.0])
     complete=np.array([[1,1,0],[1,1,1],[1,1,1]]) # update by hand with smbins, zbins
 
-    cbins=np.array([-1.,3.5,7.])
+    cbins=np.array([-2.5,-0.5,0.5,1.5]) # -2=missing, -1=bad, 0=blue,1=red
     mbins=np.array([-0.5,0.5,1.5,2.5,3.5])
     rbins=np.array([0.01,0.5,1.0])
 
@@ -844,14 +868,14 @@ if __name__ == '__main__':
     zVals=[np.median((zbins[zz],zbins[zz+1])) for zz in range(zbins.size-1)]
 
     # put galaxies in grid of bins
-    #    cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
+    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
 
     # apply corrections to the satellite population for contamination from field galaxies
-    #    satCorr=contaminationCorrection(sat,field,acs,morph,smbins,zbins,cbins,mbins,rbins,ztype)
+    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
 
-    #    zPlotFile=plotDir+"satz_tasca3_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
-    #    makeZPlot(zPlotFile,smbins,rbins,zVals,complete,sat,satCorr,field,cen)
+    zPlotFile=plotDir+"satz_oiC_zest_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
+    makeZPlot(zPlotFile,smbins,rbins,zVals,complete,sat,satCorr,field,cen)
 
 
 
@@ -862,11 +886,11 @@ if __name__ == '__main__':
     smbins=np.array([9.8,10.3,10.7,11.5,15.0]) # last bin is to get all centrals >11.5
     zbins=np.array([0.2,0.5,0.8,1.0])
 
-    cbins=np.array([-1.,7.]) # all
+    cbins=np.array([-2.5,1.5]) # all
     mbins=np.array([-0.5,3.5]) # all
     rbins=np.array([0.01,1.0]) # all
 
-    cen,sat,field=census(acs,group,halomass,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
+    #cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
 
-    censusTableFile=plotDir+"census_{}_mh{}-{}.tex".format(ztype,minmh,maxmh)
-    printCensusTable(censusTableFile,cen,sat,field,zbins,smbins)
+    #censusTableFile=plotDir+"census_{}_mh{}-{}.tex".format(ztype,minmh,maxmh)
+    #printCensusTable(censusTableFile,cen,sat,field,zbins,smbins)
