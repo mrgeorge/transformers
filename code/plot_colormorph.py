@@ -43,21 +43,21 @@ def assignHaloMass(acs,group,ztype):
         
     return halomass
 
-def assignColour(acs,ilbertQuench=False,ilbertColor=False,kevinQuench=False):
+def assignColour(acs,colourType)
 # spelling note: for this array use colour to avoid confusion with e.g. plotting color
-# ilbertQuench = extinction-corrected rest-frame template color
-# ilbertColor = evolving color cut, no dust correction
-# kevinQuench = NUV-R, R-J color-color cut from his quench catalog
+# oiQ = extinction-corrected rest-frame template color (Olivier Ilbert quenching def)
+# oiC = evolving color cut, no dust correction (Olivier Ilbert color def)
+# mrg = NUV-R, R-J color-color cut from quench_mrg catalog (based on KB color-color cuts)
 
     colour=np.zeros(acs.size)
 
-    if(ilbertQuench == True):
+    if(colourType == "oiQ"):
         blue=acs['MNUV_MR'] < 3.5
         red=acs['MNUV_MR'] >= 3.5
         colour[blue]=0
         colour[red]=1
 
-    elif(ilbertColor == True):
+    elif(colourType == "oiC"):
         blue=(acs['MNUV']-acs['MR'] < 0.5*acs['KEVIN_MSTAR'] - 0.8*acs['PHOTOZ_NON_COMB'] - 0.5)
         red=(acs['MNUV']-acs['MR'] >= 0.5*acs['KEVIN_MSTAR'] - 0.8*acs['PHOTOZ_NON_COMB'] - 0.5)
         bad=((acs['MNUV'] < -30) | (acs['MR'] < -30)) # small number flagged as -99, so not a good color
@@ -65,52 +65,81 @@ def assignColour(acs,ilbertQuench=False,ilbertColor=False,kevinQuench=False):
         colour[red]=1
         colour[bad]=-1
 
+    elif(colourType == "mrg"):
+        blue=(acs['QUENCH_MRG'] == 0)
+        red=(acs['QUENCH_MRG'] == 1)
+        bad=(acs['QUENCH_MRG'] < 0)
+        colour[blue]=0
+        colour[red]=1
+        colour[bad]=-1
+
     return colour
 
-def assignMorph(zestType=None,zestBulge=None,tasca1=None,tasca2=None,tasca3=None):
+def assignMorph(acs,morphType)
 
-    if(zestType != None):
-         morph=np.zeros(zestType.size)
+    if(morphType == "zest"):
+         morph=np.zeros(acs.size)
 
-         early=((zestType == 1) |
-               ((zestType == 2) & (zestBulge == 0)))
-         edisk=((zestType == 2) &
-                (zestBulge == 1))
-         ldisk=((zestType == 2) &
-               ((zestBulge == 2) | (zestBulge ==3)))
+         early=((acs['ZEST_TYPE'] == 1) |
+               ((acs['ZEST_TYPE'] == 2) & (acs['ZEST_BULGE'] == 0)))
+         edisk=((acs['ZEST_TYPE'] == 2) &
+                (acs['ZEST_BULGE'] == 1))
+         ldisk=((acs['ZEST_TYPE'] == 2) &
+               ((acs['ZEST_BULGE'] == 2) | (acs['ZEST_BULGE'] ==3)))
 
          morph[early]=1
          morph[edisk]=2
          morph[ldisk]=3
 
-    elif(tasca1 != None):
-         morph=np.zeros(tasca1.size)
+    elif(morphType == "tasca1"):
+         morph=np.zeros(acs.size)
 
-         ell=(tasca1 == 1)
-         spiral=(tasca1 == 2)
-         irr=(tasca1 == 3)
-
-         morph[ell]=1
-         morph[spiral]=3
-    elif(tasca2 != None):
-         morph=np.zeros(tasca2.size)
-
-         ell=(tasca2 == 1)
-         spiral=(tasca2 == 2)
-         irr=(tasca2 == 3)
-
-         morph[ell]=1
-         morph[spiral]=3
-    elif(tasca3 != None):
-         morph=np.zeros(tasca3.size)
-
-         ell=(tasca3 == 1)
-         spiral=(tasca3 == 2)
-         irr=(tasca3 == 3)
+         ell=(acs['MORPH_TASCA1'] == 1)
+         spiral=(acs['MORPH_TASCA1'] == 2)
+         irr=(acs['MORPH_TASCA1'] == 3)
 
          morph[ell]=1
          morph[spiral]=3
 
+    elif(morphType == "tasca2"):
+         morph=np.zeros(acs.size)
+
+         ell=(acs['MORPH_TASCA2'] == 1)
+         spiral=(acs['MORPH_TASCA2'] == 2)
+         irr=(acs['MORPH_TASCA2'] == 3)
+
+         morph[ell]=1
+         morph[spiral]=3
+    elif(morphType == "tasca3"):
+         morph=np.zeros(acs.size)
+
+         ell=(acs['MORPH_TASCA3'] == 1)
+         spiral=(acs['MORPH_TASCA3'] == 2)
+         irr=(acs['MORPH_TASCA3'] == 3)
+
+         morph[ell]=1
+         morph[spiral]=3
+
+    elif(morphType == "cassata"):
+         morph=np.zeros(acs.size)
+
+         ell=(acs['MORPH_CASSATA'] == 1)
+         spiral=(acs['MORPH_CASSATA'] == 2)
+         irr=(acs['MORPH_CASSATA'] == 3)
+
+         morph[ell]=1
+         morph[spiral]=3
+
+    elif(morphType == "morph2005"):
+         morph=np.zeros(acs.size)
+
+         ell=((acs['MORPH2005_GINI'] > 0.43) & (acs['MORPH2005_CONC'] >= 0.3))
+         
+         # no separate spiral/irr classification, so let's call all others spirals
+         morph[:]=3
+         
+         morph[ell]=1
+         
     # irreg and unclassified remain 0
     return morph
 
@@ -820,8 +849,12 @@ if __name__ == '__main__':
 
     # assign halo mass, colour class, and single morph class for each galaxy
     halomass=assignHaloMass(acs,group,ztype)
-    colour=assignColour(acs,ilbertColor=True)
-    morph=assignMorph(zestType=acs['ZEST_TYPE'],zestBulge=acs['ZEST_BULGE'])
+
+    colourType="oiQ" # oiQ, oiC, mrg
+    morphType="zest" # zest, tasca1, tasca2, tasca3, cassata, morph2005
+
+    colour=assignColour(acs,colourType)
+    morph=assignMorph(acs,morphType)
 
     # setup bins in SM, z, color, morphology, and group-centric radius
     smbins=np.array([9.8,10.3,10.7,11.5])
@@ -844,10 +877,10 @@ if __name__ == '__main__':
     satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
     # make plot of fraction of color/morph types vs R/R200 with separate panels for each SM, z bin.
-    radPlotFile=plotDir+"satrad_oiC_zest_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
+    radPlotFile=plotDir+"satrad_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,minmh,maxmh)
     makeRadPlot(radPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
 
-    bamfordPlotFile=plotDir+"bamford_oiC_zest_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
+    bamfordPlotFile=plotDir+"bamford_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,minmh,maxmh)
     makeBamfordPlot(bamfordPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
 
 
@@ -874,7 +907,7 @@ if __name__ == '__main__':
     satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
 
-    zPlotFile=plotDir+"satz_oiC_zest_{}_mh{}-{}.pdf".format(ztype,minmh,maxmh)
+    zPlotFile=plotDir+"satz_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,minmh,maxmh)
     makeZPlot(zPlotFile,smbins,rbins,zVals,complete,sat,satCorr,field,cen)
 
 
