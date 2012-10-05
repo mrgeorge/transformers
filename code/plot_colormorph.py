@@ -19,8 +19,8 @@ def cleanCatalogs(acs,group,minz,maxz,ztype):
          (acs[zphot] < maxz) &
          (acs['MAG_AUTO'] < 24.2) &
          (acs['GOOD_ZPHOT_LENS'] == 1) &
-         (acs['MU_CLASS'] == 1))
-         #         (acs['TYPE'] == 0)) # added 9/26/12 to remove masked regions/X-ray sources/star SED types from Ilbert's catalog
+         (acs['MU_CLASS'] == 1) &
+         (acs['TYPE'] == 0)) # added 9/26/12 to remove masked regions/X-ray sources/star SED types from Ilbert's catalog
     acs=acs[sel]
 
     sel=((group['FLAG_INCLUDE'] == 1) &
@@ -43,7 +43,7 @@ def assignHaloMass(acs,group,ztype):
         
     return halomass
 
-def assignColour(acs,colourType)
+def assignColour(acs,colourType):
 # spelling note: for this array use colour to avoid confusion with e.g. plotting color
 # oiQ = extinction-corrected rest-frame template color (Olivier Ilbert quenching def)
 # oiC = evolving color cut, no dust correction (Olivier Ilbert color def)
@@ -73,9 +73,17 @@ def assignColour(acs,colourType)
         colour[red]=1
         colour[bad]=-1
 
+    elif(colourType == "kb"):
+        blue=(acs['KEVIN_QUENCH_FLAG'] == 0)
+        red=(acs['KEVIN_QUENCH_FLAG'] == 1)
+        bad=(acs['KEVIN_QUENCH_FLAG'] < 0)
+        colour[blue]=0
+        colour[red]=1
+        colour[bad]=-1
+
     return colour
 
-def assignMorph(acs,morphType)
+def assignMorph(acs,morphType):
 
     if(morphType == "zest"):
          morph=np.zeros(acs.size)
@@ -143,7 +151,7 @@ def assignMorph(acs,morphType)
     # irreg and unclassified remain 0
     return morph
 
-def census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype):
+def census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype):
 
     nSMbins=smbins.size-1
     nzbins=zbins.size-1
@@ -168,6 +176,11 @@ def census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,
          pMem="P_MEM_BEST"
          distBCG="DIST_BCG_R200"
 
+    if(smtype=="kb"):
+         stellarMass="KEVIN_MSTAR"
+    elif(smtype=="oi"):
+         stellarMass="ILBERT_MASS_MED"
+
     for sm in range(nSMbins):
         for zz in range(nzbins):
             for cc in range(ncbins):
@@ -176,8 +189,8 @@ def census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,
                             (halomass < maxmh) &
                             (acs[mmggScale] == 1) &
                             (acs[groupFlag] == 1) &
-                            (acs['KEVIN_MSTAR'] >= smbins[sm]) &
-                            (acs['KEVIN_MSTAR'] < smbins[sm+1]) &
+                            (acs[stellarMass] >= smbins[sm]) &
+                            (acs[stellarMass] < smbins[sm+1]) &
                             (acs[zphot] >= zbins[zz]) &
                             (acs[zphot] < zbins[zz+1]) &
                             (colour >= cbins[cc]) &
@@ -185,8 +198,8 @@ def census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,
                             (morph >= mbins[mm]) &
                             (morph < mbins[mm+1]))
                     fieldsel=((acs[pMem] <= 0) &
-                              (acs['KEVIN_MSTAR'] >= smbins[sm]) &
-                              (acs['KEVIN_MSTAR'] < smbins[sm+1]) &
+                              (acs[stellarMass] >= smbins[sm]) &
+                              (acs[stellarMass] < smbins[sm+1]) &
                               (acs[zphot] >= zbins[zz]) &
                               (acs[zphot] < zbins[zz+1]) &
                               (colour >= cbins[cc]) &
@@ -203,8 +216,8 @@ def census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,
                                 (acs[mmggScale] == 0) &
                                 (acs[pMem] >= 0.5) &
                                 (acs[groupFlag] == 1) &
-                                (acs['KEVIN_MSTAR'] >= smbins[sm]) &
-                                (acs['KEVIN_MSTAR'] < smbins[sm+1]) &
+                                (acs[stellarMass] >= smbins[sm]) &
+                                (acs[stellarMass] < smbins[sm+1]) &
                                 (acs[zphot] >= zbins[zz]) &
                                 (acs[zphot] < zbins[zz+1]) &
                                 (colour >= cbins[cc]) &
@@ -362,6 +375,21 @@ def getCMFracZ(arr,sm,rr,nsplit):
     else: # nsplit != 2 or 6
          print "Error in getCMFracZ: nsplit should = 2 or 6"
          return -1
+
+def makeBlueSphPlot(zbins,smVals,field):
+    plt.clf()
+    plt.xlim((9,11.7))
+    plt.ylim((0,1))
+
+    colors=np.array(['blue','green','yellow','red'])
+
+    for zz in range(zbins.size-1):
+         blueSph=sliceArr(field,sm=-1,zz=zz,cc=1,mm=1,rr=-1)
+         allSph=sliceArr(field,sm=-1,zz=zz,cc=-2,mm=1,rr=-1)
+         frac=1.*blueSph/allSph
+
+         plt.plot(smVals,frac,color=colors[zz])
+
 
 def setupPlotArray(nrows,ncols,xtitle=r'Distance from Group Center [R/R$_{200{\rm c}}$]',ytitle=r'Fraction $|_{\rm M_{\star},z}$',figsize=(8,6),xlim=(-0.1,1.19),ylim=(-0.03,0.68)):
     # use helvetica and latex
@@ -838,6 +866,7 @@ if __name__ == '__main__':
     minmh=13.0
     maxmh=14.0
     ztype="zp" # use zb for zbest (i.e. specz if available), else zp for photoz only
+    smtype="oi" # for census selecting in SM range, use kb or oi
 
     plotDir="../plots/"
 
@@ -850,18 +879,20 @@ if __name__ == '__main__':
     # assign halo mass, colour class, and single morph class for each galaxy
     halomass=assignHaloMass(acs,group,ztype)
 
-    colourType="oiQ" # oiQ, oiC, mrg
-    morphType="zest" # zest, tasca1, tasca2, tasca3, cassata, morph2005
+    colourType="oiQ" # oiQ, oiC, mrg, kb
+    morphType="morph2005" # zest, tasca1, tasca2, tasca3, cassata, morph2005
 
     colour=assignColour(acs,colourType)
     morph=assignMorph(acs,morphType)
 
     # setup bins in SM, z, color, morphology, and group-centric radius
-    smbins=np.array([9.8,10.3,10.7,11.5])
-    zbins=np.array([0.2,0.8,1.0])
+    #    smbins=np.array([9.8,10.3,10.7,11.5])
+    #    zbins=np.array([0.2,0.8,1.0])
+    smbins=np.array([9.6,9.8,10.0,10.2,10.4,10.6,10.8,11.0,11.2,11.4,11.6])
+    zbins=np.array([0.2,0.4,0.6,0.8,1.0])
     complete=np.array([[1,0],[1,1],[1,1]]) # update by hand with smbins, zbins
-#    zbins=np.array([0.2,0.5,0.8,1.0])
-#    complete=np.array([[1,1,0],[1,1,1],[1,1,1]]) # update by hand with smbins, zbins
+    #    zbins=np.array([0.2,0.5,0.8,1.0])
+    #   complete=np.array([[1,1,0],[1,1,1],[1,1,1]]) # update by hand with smbins, zbins
 
     cbins=np.array([-2.5,-0.5,0.5,1.5]) # -2=missing, -1=bad, 0=blue,1=red
     mbins=np.array([-0.5,0.5,1.5,2.5,3.5]) # 0=missing/bad, 1=spheroidal, 2=bulge+disk, 3=late disk
@@ -869,9 +900,10 @@ if __name__ == '__main__':
 
     satRad=[np.median((rbins[rr],rbins[rr+1])) for rr in range(rbins.size-1)]
     zVals=[np.median((zbins[zz],zbins[zz+1])) for zz in range(zbins.size-1)]
+    smVals=[np.median((smbins[sm],smbins[sm+1])) for sm in range(smbins.size-1)]
 
     # put galaxies in grid of bins
-    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
+    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype)
 
     # apply corrections to the satellite population for contamination from field galaxies
     satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
@@ -901,7 +933,7 @@ if __name__ == '__main__':
     zVals=[np.median((zbins[zz],zbins[zz+1])) for zz in range(zbins.size-1)]
 
     # put galaxies in grid of bins
-    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
+    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype)
 
     # apply corrections to the satellite population for contamination from field galaxies
     satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
@@ -923,7 +955,7 @@ if __name__ == '__main__':
     mbins=np.array([-0.5,3.5]) # all
     rbins=np.array([0.01,1.0]) # all
 
-    #cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype)
+    #cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype)
 
     #censusTableFile=plotDir+"census_{}_mh{}-{}.tex".format(ztype,minmh,maxmh)
     #printCensusTable(censusTableFile,cen,sat,field,zbins,smbins)
