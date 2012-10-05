@@ -7,6 +7,8 @@ tascaFile="~/data/cosmos/catalogs/cosmos_morph_tasca_1.1.tbl"
 cassataFile="~/data/cosmos/catalogs/cosmos_morph_cassata_1.1.tbl"
 morph2005File="~/data/cosmos/catalogs/cosmos_morphology_2005.tbl"
 quenchFile="~/data/cosmos/catalogs/quench_mrg.fits"
+oiMassFile="/Users/alexie/Work/PhotozOlivier/photoz-1.8/photoz_vers1.8_130710.fits"
+
 
 acs=mrdfits(acsInFile,1)
 sel=where(acs.mag_auto LT 24.2 $
@@ -23,6 +25,7 @@ morph_tasca3=intarr(nAcs)
 morph_cassata=intarr(nAcs)
 morph2005_gini=fltarr(nAcs)
 morph2005_conc=fltarr(nAcs)
+ilbert_mass_med=fltarr(nAcs)
 
 
 ; TASCA MORPHOLOGY
@@ -107,6 +110,21 @@ quench_cat=mrdfits(quenchFile,1)
 acs=mrg_addcol(acs,"QUENCH_MRG",quench_cat.quenched)
 
 undefine,quench_cat
+
+
+; ILBERT MASSES
+zpcat=mrdfits(oiMassFile,1)
+
+close_match_radec,acs[sel].alpha_j2000,acs[sel].delta_j2000,zpcat.alpha_j2000,zpcat.delta_j2000,match1,match2,1./3600,1
+
+ilbert_mass_med[sel[match1]]=(zpcat.mass_med)[match2]
+
+acs=mrg_addcol(acs,'ILBERT_MASS_MED',ilbert_mass_med)
+
+undefine,zpcat
+undefine,match1
+undefine,match2
+undefine,ilbert_mass_med
 
 mwrfits,acs,acsOutFile,/create
 
