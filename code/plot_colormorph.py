@@ -73,7 +73,7 @@ def assignColour(acs,colourType):
         colour[red]=1
         colour[bad]=-1
 
-    elif(colourType == "kb"):
+    elif(colourType == "kbQ"):
         blue=(acs['KEVIN_QUENCH_FLAG'] == 0)
         red=(acs['KEVIN_QUENCH_FLAG'] == 1)
         bad=(acs['KEVIN_QUENCH_FLAG'] < 0)
@@ -151,7 +151,7 @@ def assignMorph(acs,morphType):
     # irreg and unclassified remain 0
     return morph
 
-def census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype):
+def census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype):
 
     nSMbins=smbins.size-1
     nzbins=zbins.size-1
@@ -168,13 +168,16 @@ def census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,
          groupFlag="GROUP_FLAG_BEST_SPECZ"
          zphot="ZPHOT"
          pMem="P_MEM_BEST_SPECZ"
-         distBCG="DIST_BCG_R200_SPECZ"
-    else:
+         distCen="DIST_BCG_R200_SPECZ"
+    else: # zp
          mmggScale="MMGG_SCALE"
          groupFlag="GROUP_FLAG_BEST"
          zphot="PHOTOZ_NON_COMB"
          pMem="P_MEM_BEST"
-         distBCG="DIST_BCG_R200"
+         distCen="DIST_BCG_R200"
+
+    if(centype=="cf"):
+        distCen="DIST_CF_R200" # no specz version so just use this for either ztype
 
     if(smtype=="kb"):
          stellarMass="KEVIN_MSTAR"
@@ -224,8 +227,8 @@ def census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,
                                 (colour < cbins[cc+1]) &
                                 (morph >= mbins[mm]) &
                                 (morph < mbins[mm+1]) &
-                                (acs[distBCG] >= rbins[rr]) &
-                                (acs[distBCG] < rbins[rr+1]))
+                                (acs[distCen] >= rbins[rr]) &
+                                (acs[distCen] < rbins[rr+1]))
 
                         sat[sm][zz][cc][mm][rr]=len(satsel.nonzero()[0])
 
@@ -866,7 +869,10 @@ if __name__ == '__main__':
     minmh=13.0
     maxmh=14.0
     ztype="zp" # use zb for zbest (i.e. specz if available), else zp for photoz only
-    smtype="oi" # for census selecting in SM range, use kb or oi
+    smtype="kb" # for census selecting in SM range, use kb or oi
+    centype="mmgg" # mmgg or cf to test effect of miscentering on radial trend
+    colourType="kbQ" # oiQ, oiC, mrg, kbQ
+    morphType="zest" # zest, tasca1, tasca2, tasca3, cassata, morph2005
 
     plotDir="../plots/"
 
@@ -878,21 +884,17 @@ if __name__ == '__main__':
 
     # assign halo mass, colour class, and single morph class for each galaxy
     halomass=assignHaloMass(acs,group,ztype)
-
-    colourType="oiQ" # oiQ, oiC, mrg, kb
-    morphType="morph2005" # zest, tasca1, tasca2, tasca3, cassata, morph2005
-
     colour=assignColour(acs,colourType)
     morph=assignMorph(acs,morphType)
 
     # setup bins in SM, z, color, morphology, and group-centric radius
-    #    smbins=np.array([9.8,10.3,10.7,11.5])
-    #    zbins=np.array([0.2,0.8,1.0])
-    smbins=np.array([9.6,9.8,10.0,10.2,10.4,10.6,10.8,11.0,11.2,11.4,11.6])
-    zbins=np.array([0.2,0.4,0.6,0.8,1.0])
+    smbins=np.array([9.8,10.3,10.7,11.5])
+    zbins=np.array([0.2,0.8,1.0])
     complete=np.array([[1,0],[1,1],[1,1]]) # update by hand with smbins, zbins
     #    zbins=np.array([0.2,0.5,0.8,1.0])
     #   complete=np.array([[1,1,0],[1,1,1],[1,1,1]]) # update by hand with smbins, zbins
+    #smbins=np.array([9.6,9.8,10.0,10.2,10.4,10.6,10.8,11.0,11.2,11.4,11.6])
+    #zbins=np.array([0.2,0.4,0.6,0.8,1.0])
 
     cbins=np.array([-2.5,-0.5,0.5,1.5]) # -2=missing, -1=bad, 0=blue,1=red
     mbins=np.array([-0.5,0.5,1.5,2.5,3.5]) # 0=missing/bad, 1=spheroidal, 2=bulge+disk, 3=late disk
@@ -903,7 +905,7 @@ if __name__ == '__main__':
     smVals=[np.median((smbins[sm],smbins[sm+1])) for sm in range(smbins.size-1)]
 
     # put galaxies in grid of bins
-    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype)
+    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
 
     # apply corrections to the satellite population for contamination from field galaxies
     satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
@@ -933,7 +935,7 @@ if __name__ == '__main__':
     zVals=[np.median((zbins[zz],zbins[zz+1])) for zz in range(zbins.size-1)]
 
     # put galaxies in grid of bins
-    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype)
+    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
 
     # apply corrections to the satellite population for contamination from field galaxies
     satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
