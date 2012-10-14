@@ -43,8 +43,8 @@ plot,acs[sel[lowz]].mr-acs[sel[lowz]].mj,acs[sel[lowz]].mnuv-acs[sel[lowz]].mr,p
 oplot,acs[sel[lowz[lowzred]]].mr-acs[sel[lowz[lowzred]]].mj,acs[sel[lowz[lowzred]]].mnuv-acs[sel[lowz[lowzred]]].mr,ps=3,color=!red
 
 bluesph=where(acs[sel[lowz]].kevin_mstar GT 10.7 AND $
-              (acs[sel[lowz]].zest_type EQ 1 OR (acs[sel[lowz]].zest_type EQ 2 AND acs[sel[lowz]].zest_bulge EQ 0)) $
-              AND acs[sel[lowz]].mnuv_mr LT 3.5)
+              (acs[sel[lowz]].zest_type EQ 1 OR (acs[sel[lowz]].zest_type EQ 2 AND acs[sel[lowz]].zest_bulge EQ 0))); $
+;              AND acs[sel[lowz]].mnuv_mr LT 3.5)
 oplot,acs[sel[lowz[bluesph]]].mr-acs[sel[lowz[bluesph]]].mj,acs[sel[lowz[bluesph]]].mnuv-acs[sel[lowz[bluesph]]].mr,ps=8,color=!blue
 
 nuvrCut=4.
@@ -64,8 +64,8 @@ plot,acs[sel[midz]].mr-acs[sel[midz]].mj,acs[sel[midz]].mnuv-acs[sel[midz]].mr,p
 oplot,acs[sel[midz[midzred]]].mr-acs[sel[midz[midzred]]].mj,acs[sel[midz[midzred]]].mnuv-acs[sel[midz[midzred]]].mr,ps=3,color=!red
 
 bluesph=where(acs[sel[midz]].kevin_mstar GT 10.7 AND $
-              (acs[sel[midz]].zest_type EQ 1 OR (acs[sel[midz]].zest_type EQ 2 AND acs[sel[midz]].zest_bulge EQ 0)) $
-              AND acs[sel[midz]].mnuv_mr LT 3.5)
+              (acs[sel[midz]].zest_type EQ 1 OR (acs[sel[midz]].zest_type EQ 2 AND acs[sel[midz]].zest_bulge EQ 0))); $
+;              AND acs[sel[midz]].mnuv_mr LT 3.5)
 oplot,acs[sel[midz[bluesph]]].mr-acs[sel[midz[bluesph]]].mj,acs[sel[midz[bluesph]]].mnuv-acs[sel[midz[bluesph]]].mr,ps=8,color=!blue
 
 nuvrCut=3.7
@@ -83,8 +83,8 @@ plot,acs[sel[highz]].mr-acs[sel[highz]].mj,acs[sel[highz]].mnuv-acs[sel[highz]].
 oplot,acs[sel[highz[highzred]]].mr-acs[sel[highz[highzred]]].mj,acs[sel[highz[highzred]]].mnuv-acs[sel[highz[highzred]]].mr,ps=3,color=!red
 
 bluesph=where(acs[sel[highz]].kevin_mstar GT 10.7 AND $
-              (acs[sel[highz]].zest_type EQ 1 OR (acs[sel[highz]].zest_type EQ 2 AND acs[sel[highz]].zest_bulge EQ 0)) $
-              AND acs[sel[highz]].mnuv_mr LT 3.5)
+              (acs[sel[highz]].zest_type EQ 1 OR (acs[sel[highz]].zest_type EQ 2 AND acs[sel[highz]].zest_bulge EQ 0))); $
+;              AND acs[sel[highz]].mnuv_mr LT 3.5)
 oplot,acs[sel[highz[bluesph]]].mr-acs[sel[highz[bluesph]]].mj,acs[sel[highz[bluesph]]].mnuv-acs[sel[highz[bluesph]]].mr,ps=8,color=!blue
 
 nuvrCut=3.7
@@ -95,6 +95,9 @@ oplot,!x.crange,rjSlope*!x.crange+rjIntercept
 highzquench=where(acs[sel[highz]].mnuv - acs[sel[highz]].mr GE nuvrCut $
                  AND acs[sel[highz]].mnuv - acs[sel[highz]].mr GE rjSlope*(acs[sel[highz]].mr - acs[sel[highz]].mj) + rjIntercept)
 quench[sel[highz[highzquench]]]=1
+
+
+
 
 
 bad=where(acs.mnuv LT -30 $
@@ -109,6 +112,6 @@ quench_cat.ra=acs.alpha_j2000
 quench_cat.dec=acs.delta_j2000
 quench_cat.quenched=quench
 
-mwrfits,quench_cat,quenchOutFile,/create
+;mwrfits,quench_cat,quenchOutFile,/create
 
 end
