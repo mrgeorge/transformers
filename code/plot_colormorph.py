@@ -870,9 +870,9 @@ if __name__ == '__main__':
     maxmh=14.0
     ztype="zp" # use zb for zbest (i.e. specz if available), else zp for photoz only
     smtype="kb" # for census selecting in SM range, use kb or oi
-    centype="mmgg" # mmgg or cl to test effect of miscentering on radial trend
-    colourType="kbQ" # oiQ, oiC, mrg, kbQ
+    colourType="oiQ" # oiQ, oiC, mrg, kbQ
     morphType="zest" # zest, tasca1, tasca2, tasca3, cassata, morph2005
+    centype="cf" # mmgg or cl to test effect of miscentering on radial trend
 
     plotDir="../plots/"
 
@@ -911,10 +911,10 @@ if __name__ == '__main__':
     satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
     # make plot of fraction of color/morph types vs R/R200 with separate panels for each SM, z bin.
-    radPlotFile=plotDir+"satrad_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,minmh,maxmh)
+    radPlotFile=plotDir+"satrad_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
     makeRadPlot(radPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
 
-    bamfordPlotFile=plotDir+"bamford_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,minmh,maxmh)
+    bamfordPlotFile=plotDir+"bamford_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
     makeBamfordPlot(bamfordPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
 
 
@@ -941,7 +941,7 @@ if __name__ == '__main__':
     satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
 
-    zPlotFile=plotDir+"satz_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,minmh,maxmh)
+    zPlotFile=plotDir+"satz_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
     makeZPlot(zPlotFile,smbins,rbins,zVals,complete,sat,satCorr,field,cen)
 
 
