@@ -131,21 +131,21 @@ undefine,match1
 undefine,match2
 undefine,ilbert_mass_med
 
-; add distance to alternate center (CF) for testing how radial trends
+; add distance to alternate center (CL) for testing how radial trends
 ; are affected by miscentering
-dist_cf_r200=fltarr(nAcs)
-dist_cf_r200[*]=-1.
+dist_cl_r200=fltarr(nAcs)
+dist_cl_r200[*]=-1.
 for ii=0,n_elements(group)-1 do begin
    mem=where(acs.group_id_best EQ group[ii].id, nMem)
    if(nMem GT 0) then begin
-      dist=distance(acs[mem].alpha_j2000,acs[mem].delta_j2000,group[ii].alpha_cf,group[ii].delta_cf)*3600. / group[ii].lensing_r200_as
-      dist_cf_r200[mem]=dist
+      dist=distance(acs[mem].alpha_j2000,acs[mem].delta_j2000,group[ii].alpha_cl,group[ii].delta_cl)*3600. / group[ii].lensing_r200_as
+      dist_cl_r200[mem]=dist
    endif
 endfor
 
-acs=mrg_addcol(acs,'DIST_CF_R200',dist_cf_r200)
+acs=mrg_addcol(acs,'DIST_CL_R200',dist_cl_r200)
 
-undefine,dist_cf_r200
+undefine,dist_cl_r200
 
 
 mwrfits,acs,acsOutFile,/create

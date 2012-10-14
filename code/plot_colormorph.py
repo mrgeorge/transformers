@@ -176,8 +176,8 @@ def census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,
          pMem="P_MEM_BEST"
          distCen="DIST_BCG_R200"
 
-    if(centype=="cf"):
-        distCen="DIST_CF_R200" # no specz version so just use this for either ztype
+    if(centype=="cl"):
+        distCen="DIST_CL_R200" # no specz version so just use this for either ztype
 
     if(smtype=="kb"):
          stellarMass="KEVIN_MSTAR"
@@ -870,7 +870,7 @@ if __name__ == '__main__':
     maxmh=14.0
     ztype="zp" # use zb for zbest (i.e. specz if available), else zp for photoz only
     smtype="kb" # for census selecting in SM range, use kb or oi
-    centype="mmgg" # mmgg or cf to test effect of miscentering on radial trend
+    centype="mmgg" # mmgg or cl to test effect of miscentering on radial trend
     colourType="kbQ" # oiQ, oiC, mrg, kbQ
     morphType="zest" # zest, tasca1, tasca2, tasca3, cassata, morph2005
 
