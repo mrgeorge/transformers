@@ -1,5 +1,8 @@
 pro add_morph
 
+; add a bunch of properties to the galaxy catalog for use in
+; morph/color/density analysis, i.e. plot_colormorph.py
+
 acsInFile="~/data/cosmos/code/lensing18_20110914.fits"
 acsOutFile="~/data/cosmos/code/lensing18_20110914_morph.fits"
 
@@ -9,6 +12,8 @@ morph2005File="~/data/cosmos/catalogs/cosmos_morphology_2005.tbl"
 quenchFile="~/data/cosmos/catalogs/quench_mrg.fits"
 oiMassFile="/Users/alexie/Work/PhotozOlivier/photoz-1.8/photoz_vers1.8_130710.fits"
 
+groupInFile="~/data/cosmos/code/group5_20110914.fits"
+group=mrdfits(groupInFile,1)
 
 acs=mrdfits(acsInFile,1)
 sel=where(acs.mag_auto LT 24.2 $
@@ -125,6 +130,23 @@ undefine,zpcat
 undefine,match1
 undefine,match2
 undefine,ilbert_mass_med
+
+; add distance to alternate center (CF) for testing how radial trends
+; are affected by miscentering
+dist_cf_r200=fltarr(nAcs)
+dist_cf_r200[*]=-1.
+for ii=0,n_elements(group)-1 do begin
+   mem=where(acs.group_id_best EQ group[ii].id, nMem)
+   if(nMem GT 0) then begin
+      dist=distance(acs[mem].alpha_j2000,acs[mem].delta_j2000,group[ii].alpha_cf,group[ii].delta_cf)*3600. / group[ii].lensing_r200_as
+      dist_cf_r200[mem]=dist
+   endif
+endfor
+
+acs=mrg_addcol(acs,'DIST_CF_R200',dist_cf_r200)
+
+undefine,dist_cf_r200
+
 
 mwrfits,acs,acsOutFile,/create
 
