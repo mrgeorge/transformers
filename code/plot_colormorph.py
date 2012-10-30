@@ -493,10 +493,13 @@ def setSMTitle(ax,smbins,sm):
      smstr=r"log(M$_{\star}$/M$_{\odot}$)=["+str(smbins[sm])+", "+str(smbins[sm+1])+")"
      ax.set_title(smstr,fontsize=12,fontweight='heavy')
 
-def setZTitle(ax,zbins,zz,fontsize):
+def setZTitle(ax,zbins,zz,fontsize,logBool):
      zstr=r"z=["+str(zbins[zz])+", "+str(zbins[zz+1])+")"
      xpos=1.05*(ax.get_xlim()[1]-ax.get_xlim()[0])+ax.get_xlim()[0]
-     ypos=np.mean(ax.get_ylim())
+     if(logBool):
+         ypos=10**(np.mean(np.log10(ax.get_ylim())))
+     else:
+         ypos=np.mean(ax.get_ylim())
      ax.text(xpos,ypos,zstr,fontsize=fontsize,rotation=270,fontweight='heavy',verticalalignment='center')
 
 def setRadTitle(ax,rbins,rr,fontsize):
@@ -549,7 +552,7 @@ def makeRadPlot(plotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen):
                    if(zz==0):
                         setSMTitle(axarr[zz,sm],smbins,sm)
                    if(sm==smbins.size-2):
-                        setZTitle(axarr[zz,sm],zbins,zz,12)
+                        setZTitle(axarr[zz,sm],zbins,zz,12,False)
 
               else:
                    hidePanel(axarr,zz,sm)
@@ -671,7 +674,7 @@ def makeBamfordPlot(plotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
 
          if(zz==0):
               setBamfordTitle(axarr[zz,:])
-         setZTitle(axarr[zz,1],zbins,zz,'medium')
+         setZTitle(axarr[zz,1],zbins,zz,'medium',False)
 
     plt.sca(axarr[0,0])
     plotBamfordLegend()     
@@ -872,7 +875,7 @@ if __name__ == '__main__':
     smtype="kb" # for census selecting in SM range, use kb or oi
     colourType="oiQ" # oiQ, oiC, mrg, kbQ
     morphType="zest" # zest, tasca1, tasca2, tasca3, cassata, morph2005
-    centype="cf" # mmgg or cl to test effect of miscentering on radial trend
+    centype="cl" # mmgg or cl to test effect of miscentering on radial trend
 
     plotDir="../plots/"
 
