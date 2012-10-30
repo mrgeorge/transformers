@@ -5,33 +5,12 @@ from esutil import cosmology
 
 cosmo=cosmology.Cosmo(h=0.72,omega_m=0.258,omega_l=0.742) # WMAP5
 
-# TO DO:
-
 # create histogram plots showing color bimodality in different mass, z, morph selections
 # overlay dashed line showing 3.5 boundary
-# label different curves, or use different panels?
-# use N for y-axis and a simple bin width in color, so that relative sizes of different curves can clearly show differences in population sizes
-
-# panel ideas (first just make as single plots):
-#  3 mass bins at low z
-#  3 mass bins at high z
-#  3 morph types at low z (all M?)
-# etc
-
-def setupHistPlot(xtitle=r"NUV - r$^+$"):
-
-    # use helvetica and latex
-    plt.clf()
-    plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'],'size':20})
-    plt.rc('text', usetex=True)
-    plt.rc('axes', linewidth=1.5)
-    plt.rc('xtick',labelsize=14)
-    plt.rc('ytick',labelsize=14)
-    plt.xlabel(xtitle,fontsize='medium')
-    plt.ylabel("N",fontsize='medium')
 
 def histPlotLegend():
-    plt.legend(prop={'size':12},loc='upper right',frameon=False)
+    xpad=0.1
+    plt.legend(prop={'size':12},numpoints=1,loc='center right',bbox_to_anchor=(-1-xpad,0.5),frameon=False)
 
 def oplotZTitle(zRange,xPos,yPos,fontsize):
     zStr=r"z = [{}-{})".format(zRange[0],zRange[1])
@@ -64,31 +43,36 @@ def addVolumeAxis(zRange):
     ax.yaxis.set_ticks(tickLocs*vFactor)
     ax.yaxis.set_ticklabels(tickLocs)
 
-def makeHistPlot(arrs, labels, colors, linestyles, zRange, smRange):
+def makeHistPlot(ax, arrs, labels, colors, linestyles, zRange, smRange, cRange, cBin, logOpt):
 
-    cRange=np.array([-1.,6.5])
-    cBin=0.5
+    cSplit=3.5
     nCBins=(cRange[1]-cRange[0])/cBin
 
     lw=2
 
-    setupHistPlot()
-    plt.xlim(cRange)
-    plt.hist(arrs,histtype='step',range=cRange,bins=nCBins,label=labels,color=colors,lw=lw)
-    histPlotLegend()
+    #    setupHistPlot()
+    #    plt.xlim(cRange)
+    ax.hist(arrs,histtype='step',range=cRange,bins=nCBins,label=labels,color=colors,lw=lw,log=logOpt)
 
-    addVolumeAxis(zRange)
+    ax.plot((cSplit,cSplit),ax.get_ylim(),color="gray",linestyle=':')
+    
+    #    histPlotLegend()
 
-    xlim=plt.gca().get_xlim()
-    ylim=plt.gca().get_ylim()
-    xPos=xlim[0]+0.05*(xlim[1]-xlim[0])
-    yPos=ylim[0]+0.95*(ylim[1]-ylim[0])
-    fontsize=14
-    oplotZTitle(zRange,xPos,yPos,fontsize)
-    oplotSMTitle(smRange,xPos,yPos-0.07*(ylim[1]-ylim[0]),fontsize)
+    # addVolumeAxis(zRange)
 
+    #    xlim=plt.gca().get_xlim()
+    #    ylim=plt.gca().get_ylim()
+    #    xPos=xlim[0]+0.05*(xlim[1]-xlim[0])
+    #    yPos=ylim[0]+0.95*(ylim[1]-ylim[0])
+    #    fontsize=14
+    #    oplotZTitle(zRange,xPos,yPos,fontsize)
+    #    oplotSMTitle(smRange,xPos,yPos-0.07*(ylim[1]-ylim[0]),fontsize)
 
-def selectHistData(data,morph,zMin=0,zMax=1,smMin=2,smMax=15,morphType="All",zType="zp"):
+def makeScatterPlot(ax,xarrs,yarrs,labels,colors,pointstyles,zRange,smRange):
+
+    [ax.scatter(xarrs[ii],yarrs[ii],color=colors[ii],label=labels[ii],marker=pointstyles[ii],s=1,edgecolor='none') for ii in range(len(xarrs))]
+
+def selectHistData(data,morph,zRange=np.array([0,1]),smRange=np.array([2,15]),morphType="All",zType="zp"):
 
     if(zType == "zb"): # zbest, use speczs when available
         zphot="ZPHOT"
@@ -97,55 +81,94 @@ def selectHistData(data,morph,zMin=0,zMax=1,smMin=2,smMax=15,morphType="All",zTy
 
     morphDict={"Spheroidal":[1],"Bulge+Disk":[2],"Late Disk":[3],"All":[0,1,2,3]}
 
-    sel=((data[zphot] >= zMin) &
-         (data[zphot] < zMax) &
-         (data['KEVIN_MSTAR'] >= smMin) &
-         (data['KEVIN_MSTAR'] < smMax) &
+    sel=((data[zphot] >= zRange[0]) &
+         (data[zphot] < zRange[1]) &
+         (data['KEVIN_MSTAR'] >= smRange[0]) &
+         (data['KEVIN_MSTAR'] < smRange[1]) &
          (map(lambda x: x in morphDict[morphType],morph))
         )
 
-    return data[sel]['MNUV_MR']
+    return sel
 
-def defineHistCategories(option,data,morph,zType):
+def makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,linestyles,logOpt):
 
-    smBins=np.array([9.8,10.3,10.7,11.5])
-    zBins=np.array([0.2,0.5,0.8,1.0])
-    morphTypes=np.array(["Late Disk","Bulge+Disk","Spheroidal"])
+    cRange=np.array([-1.,6.5])
+    cBin=0.5
 
-    colors=["blue","green","red"]
-    #    linestyles=["solid","dashed","dotted"]
-    linestyles=["-","--",":"]
-   
-    if(option == "mass_lowz"):
-        zRange=zBins[0:2]
-        smRange=np.array([smBins[0],smBins[-1]])
-        arrs=[selectHistData(data,morph,zMin=zBins[0],zMax=zBins[1],smMin=smBins[ii],smMax=smBins[ii+1],morphType="All",zType=zType) for ii in range(smBins.size-1)]
-        labels=["[{}-{})".format(smBins[ii],smBins[ii+1]) for ii in range(smBins.size-1)]
-        colors=colors
-        linestyles=linestyles
-    elif(option == "mass_highz"):
-        zRange=zBins[-2:]
-        smRange=np.array([smBins[0],smBins[-1]])
-        arrs=[selectHistData(data,morph,zMin=zBins[-2],zMax=zBins[-1],smMin=smBins[ii],smMax=smBins[ii+1],morphType="All",zType=zType) for ii in np.arange(smBins.size-2)+1]
-        labels=["[{}-{})".format(smBins[ii],smBins[ii+1]) for ii in np.arange(smBins.size-2)+1]
-        colors=colors[1:]
-        linestyles=linestyles[1:]
-    elif(option == "morph_lowz_highm"):
-        zRange=zBins[0:2]
-        smRange=smBins[-2:]
-        arrs=[selectHistData(data,morph,zMin=zBins[0],zMax=zBins[1],smMin=smBins[-2],smMax=smBins[-1],morphType=morphTypes[ii],zType=zType) for ii in range(morphTypes.size)]
-        labels=[morphTypes[ii] for ii in range(morphTypes.size)]
-        colors=colors
-        linestyles=linestyles
-    elif(option == "morph_highz_highm"):
-        zRange=zBins[-2:]
-        smRange=smBins[-2:]
-        arrs=[selectHistData(data,morph,zMin=zBins[-2],zMax=zBins[-1],smMin=smBins[-2],smMax=smBins[-1],morphType=morphTypes[ii],zType=zType) for ii in range(morphTypes.size)]
-        labels=[morphTypes[ii] for ii in range(morphTypes.size)]
-        colors=colors
-        linestyles=linestyles
+    if(logOpt=="log"):
+        ylim=np.array([5,700])
+        logBool=True
+    else:
+        ylim=np.array([0,499])
+        logBool=False
 
-    return (arrs,np.array(labels),np.array(colors),np.array(linestyles),zRange,smRange)
+    axarr=setupPlotArray(zbins.size-1,smbins.size-1,xtitle=r"NUV-r$^+$",ytitle="N",xlim=cRange,ylim=ylim)
+
+    # loop over sm bins and z bins selecting data and plotting histograms in each panel
+    for sm in range(smbins.size-1):
+         for zz in range(zbins.size-1):
+              if(complete[sm,zz]==1):
+                  zRange=zbins[zz:zz+2]
+                  smRange=smbins[sm:sm+2]
+                  
+                  # select arrays
+                  sels=[selectHistData(acs,morph,zRange=zRange,smRange=smRange,morphType=morphTypes[ii],zType=ztype) for ii in range(morphTypes.size)]
+                  arrs=[acs[sel]['MNUV_MR'] for sel in sels]
+
+                  # plot histograms
+                  makeHistPlot(axarr[zz,sm],arrs,labels,colors,linestyles,zRange,smRange,cRange,cBin,logBool)
+
+                  if(zz==0):
+                       setSMTitle(axarr[zz,sm],smbins,sm)
+                  if(sm==smbins.size-2):
+                       setZTitle(axarr[zz,sm],zbins,zz,12,logBool)
+
+              else:
+                   hidePanel(axarr,zz,sm)
+
+    # add legend to first panel
+    histPlotLegend()
+                  
+    # save figure
+    plt.savefig(histPlotFile)
+
+def makeScatterMultiPlot(scatterPlotFile,acs,morph,zbins,smbins,labels,colors,pointstyles):
+    
+    xlim=np.array([-0.3,1.49])
+    ylim=np.array([1.,5.9])
+
+    axarr=setupPlotArray(zbins.size-1,smbins.size-1,xtitle=r"NUV-R",ytitle="R-J",xlim=xlim,ylim=ylim)
+
+    # loop over sm bins and z bins selecting data and plotting histograms in each panel
+    for sm in range(smbins.size-1):
+         for zz in range(zbins.size-1):
+              if(complete[sm,zz]==1):
+                  zRange=zbins[zz:zz+2]
+                  smRange=smbins[sm:sm+2]
+                  
+                  # select arrays
+                  sels=[selectHistData(acs,morph,zRange=zRange,smRange=smRange,morphType=morphTypes[ii],zType=ztype) for ii in range(morphTypes.size)]
+                  xarrs=[(acs[sel]['MR']-acs[sel]['MJ']) for sel in sels]
+                  yarrs=[(acs[sel]['MNUV']-acs[sel]['MR']) for sel in sels]
+
+                  # plot color-color scatter diagram
+                  makeScatterPlot(axarr[zz,sm],xarrs,yarrs,labels,colors,pointstyles,zRange,smRange)
+
+                  if(zz==0):
+                       setSMTitle(axarr[zz,sm],smbins,sm)
+                  if(sm==smbins.size-2):
+                       setZTitle(axarr[zz,sm],zbins,zz,12,False)
+
+              else:
+                   hidePanel(axarr,zz,sm)
+
+    # add legend to first panel
+    histPlotLegend()
+                  
+    # save figure
+    plt.savefig(scatterPlotFile)
+
+
 
 
 # MAIN - if called from command line
@@ -167,15 +190,26 @@ if __name__ == '__main__':
 
     # assign halo mass and single morph class for each galaxy
     halomass=assignHaloMass(acs,group,ztype)
-    morph=assignMorph(acs['ZEST_TYPE'],acs['ZEST_BULGE'])
+    morph=assignMorph(acs,"zest")
 
-    options=np.array(["mass_lowz","mass_highz","morph_lowz_highm","morph_highz_highm"])
+    smbins=np.array([9.8,10.3,10.7,11.5])
+    zbins=np.array([0.2,0.5,0.8,1.0])
+    complete=np.array([[1,1,0],[1,1,1],[1,1,1]]) # update by hand with smbins, zbins
 
-    for opt in options:
-        print opt
-        arrs,labels,colors,linestyles,zRange,smRange=defineHistCategories(opt,acs,morph,ztype)
-        print "making"
-        makeHistPlot(arrs, labels, colors, linestyles, zRange, smRange)
-        print "saving"
-        plt.savefig("../plots/{}.pdf".format(opt))
+    morphTypes=np.array(["Late Disk","Bulge+Disk","Spheroidal"])
 
+    labels=[morphTypes[ii] for ii in range(morphTypes.size)]
+    colors=["blue","green","red"]
+    linestyles=["-","--",":"] # ["solid","dashed","dotted"]
+    pointstyles=['o','o','o']
+
+    # options for multi-panel hist plot
+    logOpt="log"
+    histPlotFile=plotDir+"color_hist_{}.pdf".format(logOpt)
+
+    #    makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,linestyles,logOpt)
+
+    # options for multi-panel color-color scatter plot
+    scatterPlotFile=plotDir+"color_scatter.pdf"
+
+    makeScatterMultiPlot(scatterPlotFile,acs,morph,zbins,smbins,labels,colors,pointstyles)
