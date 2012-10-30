@@ -63,11 +63,14 @@ if __name__ == '__main__':
 
     mh=10.**13.5
 
-    print haloGrowth(mh,1,0)
-    print haloGrowth(mh,0.9,0.35)
+    print np.log10(haloGrowth(mh,1,0)) # growth in dex
+    print np.log10(haloGrowth(mh,0.9,0.35))
 
 
     # how much does a star-forming galaxy grow over the same redshift ranges?
     
-    print stellarGrowth(1,0)
-    print stellarGrowth(0.9,0.35)
+    print np.log10(stellarGrowth(1,0))
+    print np.log10(stellarGrowth(0.9,0.35))
+
+    print np.log10(stellarGrowth(0.9,0.65))
+    print np.log10(stellarGrowth(0.65,0.35))
