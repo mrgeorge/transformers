@@ -563,8 +563,9 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, colorSel, 
     fullData=readData(imListFile)
 
     # determine number of panels for redshift bins and loop over them
-    zVals=np.arange(minZ,maxZ,zBin)
-    nPanels=zVals.size + morphLegend
+    #    zVals=np.arange(minZ,maxZ,zBin)
+    #    nPanels=zVals.size + morphLegend
+    nPanels=np.int(np.round((maxZ-minZ)/zBin) + morphLegend)
 
     # where should the morphology legend go (if morphLegend==True)
     morphPanel=4
@@ -624,6 +625,7 @@ def main(imDir, imListFile, plotFile, minZ, maxZ, zBin, minMh, maxMh, colorSel, 
     
     # save figure
     plt.savefig(plotFile,dpi=300)
+    plt.clf()
 
 
 # MAIN - if plotgalSMvR.py is called from command line
