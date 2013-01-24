@@ -302,6 +302,7 @@ def getCMFracRad(arr,sm,zz,nsplit):
 # return a set of slices of the population census that give relevant population fractions
 # for nsplit=6, return the fractions for each of the color+morph cuts (vs. R)
 # for nsplit=2, return the red fraction and the early type fraction (vs. R)
+# for nsplit=3, return the fractions for each morph cut *among red galaxies* (vs. R)
 
     tot=sliceArr(arr,sm=sm,zz=zz,cc=-2,mm=-2,rr=-1)
 
@@ -321,8 +322,16 @@ def getCMFracRad(arr,sm,zz,nsplit):
 
          return (1.*red/tot,1.*early/tot,tot)
 
-    else: # nsplit != 2 or 6
-         print "Error in getCMFracRad: nsplit should = 2 or 6"
+    elif(nsplit==3):
+        totred=sliceArr(arr,sm=sm,zz=zz,cc=2,mm=-2,rr=-1)
+        rearly=sliceArr(arr,sm=sm,zz=zz,cc=2,mm=1,rr=-1)
+        redisk=sliceArr(arr,sm=sm,zz=zz,cc=2,mm=2,rr=-1)
+        rldisk=sliceArr(arr,sm=sm,zz=zz,cc=2,mm=3,rr=-1)
+
+        return (1.*rearly/totred,1.*redisk/totred,1.*rldisk/totred,totred)
+
+    else: # nsplit != 2 or 6 or 3
+         print "Error in getCMFracRad: nsplit should = 2 or 6 or 3"
          return -1
 
 def getCMErr(fracs):
@@ -428,30 +437,36 @@ def setupPlotArray(nrows,ncols,xtitle=r'Distance from Group Center [R/R$_{200{\r
     return axarr
 
 def defineStyles(labelflag):
-     if(labelflag == 1):
-          labels=np.array(['Red Spheroidal','Red Bulge+Disk','Red Late Disk','Blue Spheroidal','Blue Bulge+Disk','Blue Late Disk'])
-     else:
-          labels=np.repeat(None,6)
-          
      offsets=np.linspace(-1,1,num=6)*0.025
      colors=np.array(['crimson','tomato','salmon','darkblue','dodgerblue','skyblue'])
      markers=np.tile(['o','p','<'],2)
      linestyles=np.tile(['-','--',':'],2)
 
+     if(labelflag == 1):
+          labels=np.array(['Red Spheroidal','Red Bulge+Disk','Red Late Disk','Blue Spheroidal','Blue Bulge+Disk','Blue Late Disk'])
+     elif(labelflag == 2): # for makeSingleRadRedPlot satellites
+          labels=np.array([r'Spheroidal \& Bulge+Disk','Late Disk'])         
+          colors=np.array(['crimson','salmon'])
+          markers=np.array(['o','<'])
+          linestyles=np.array(['--',':'])
+     elif(labelflag == 3): # for makeSingleRadRedPlot field
+          labels=np.repeat(None,2)
+          colors=np.array(['crimson','salmon'])
+          markers=np.array(['o','<'])
+     else:
+          labels=np.repeat(None,6)
+          
      return (labels,offsets,colors,markers,linestyles)
 
-def oplotRad(ax,arr,sm,zz,rad,errflag,labelflag):
+def oplotRad(ax,sm,zz,rad,yvals,errs=np.repeat(None,6),errflag=1,labelflag=1):
 
-     nsplit=6 # how many color morph categories are there
-     yvals=getCMFracRad(arr,sm,zz,nsplit)
+     nsplit=len(yvals)-1 # how many color morph categories are there
      if(errflag == 1):
           lw=2
           ms=8
-          errs=getCMErr(yvals)
      else:
           lw=0
           ms=6
-          errs=np.repeat(None,nsplit)
 
      labels,offsets,colors,markers,linestyles=defineStyles(labelflag)
 
@@ -462,18 +477,15 @@ def oplotRad(ax,arr,sm,zz,rad,errflag,labelflag):
      else:
           print "no errs for errflag={},sm={}, zz={}".format(errflag,sm,zz)
 
-def oplotZ(ax,arr,sm,rr,zVals,complete,errflag,labelflag,nsplit=6):
+def oplotZ(ax,sm,rr,complete,zVals,yvals,errs=np.repeat(None,6),errflag=1,labelflag=1):
 
-#     nsplit=6 # how many color morph categories are there
-     yvals=getCMFracZ(arr,sm,rr,nsplit)
+     nsplit=len(yvals)-1 # how many color morph categories are there
      if(errflag == 1):
           lw=2
           ms=8
-          errs=getCMErr(yvals)
      else:
           lw=0
           ms=6
-          errs=np.repeat(None,nsplit)
 
      labels,offsets,colors,markers,linestyles=defineStyles(labelflag)
 
@@ -523,12 +535,11 @@ def setRadTitle(ax,rbins,rr,fontsize):
 def plotRadLegend():
 #     plt.legend(('Red Spheroidal','Red Bulge+Disk','Red Disk','Blue Spheroidal','Blue Bulge+Disk','Blue Disk'))
      xpad=0.1
-     plt.legend(prop={'size':12},numpoints=1,loc='center right', bbox_to_anchor=(-1-xpad,0.5),frameon=False)
+     plt.legend(prop={'size':12},numpoints=1,loc='center right', bbox_to_anchor=(-xpad,0.45),frameon=False)
 
-def plotSingleRadLegend():
+def plotSingleRadLegend(loc="upper left"):
 #     plt.legend(('Red Spheroidal','Red Bulge+Disk','Red Disk','Blue Spheroidal','Blue Bulge+Disk','Blue Disk'))
-     xpad=0.1
-     plt.legend(prop={'size':12},numpoints=1,loc='upper left', frameon=False)
+     plt.legend(prop={'size':12},numpoints=1,loc=loc, frameon=False)
 
 def plotBamfordLegend():
      # get list of legend entries and reverse them
@@ -558,40 +569,128 @@ def hidePanel(axarr,zz,sm):
 def makeSingleRadPlot(plotFile,zbins,smbins,zz,sm,satRad,sat,satCorr,field,cen):
 # this is intended to plot a single panel separate from the multi-panel plot made by makeRadPlot
 
-    axarr=setupPlotArray(1,1,figsize=(6,6),xlim=(-0.,1.19))
+    xmin=0.
+    xmax=1.19
+    axarr=setupPlotArray(1,1,figsize=(6,6),xlim=(xmin,xmax))
     cenRad=0.
     fieldRad=1.1
 
-    oplotRad(axarr,sat,sm,zz,satRad,1,1)
-    oplotRad(axarr,field,sm,zz,fieldRad,1,0)
-    oplotRad(axarr,cen,sm,zz,cenRad,1,0)
+    nsplit=6 # how many color morph categories are there
+
+    # get y-values and errors for plotting
+    # note we'll use satCorr values for means, but use sat (uncorrected) for computing bootstrap errors
+    cenVals=getCMFracRad(cen,sm,zz,nsplit)
+    satVals=getCMFracRad(sat,sm,zz,nsplit)
+    satCorrVals=getCMFracRad(satCorr,sm,zz,nsplit)
+    fieldVals=getCMFracRad(field,sm,zz,nsplit)
+
+    cenErrs=getCMErr(cenVals)
+    satErrs=getCMErr(satVals)
+    fieldErrs=getCMErr(fieldVals)
+
+    oplotRad(axarr,sm,zz,satRad,satCorrVals,errs=satErrs,errflag=1,labelflag=1)
+    oplotRad(axarr,sm,zz,fieldRad,fieldVals,errs=fieldErrs,errflag=1,labelflag=0)
+    oplotRad(axarr,sm,zz,cenRad,cenVals,errs=cenErrs,errflag=1,labelflag=0)
 
     plotSingleRadLegend()
+
+    zstr=r"z=["+str(zbins[zz])+", "+str(zbins[zz+1])+")"
+    smstr=r"log(M$_{\star}$/M$_{\odot}$)=["+str(smbins[sm])+", "+str(smbins[sm+1])+")"
+
+    xpos=xmin+0.6*(xmax-xmin)
+    ymin=axarr.get_ylim()[0]
+    ymax=axarr.get_ylim()[1]
+    ypos=ymin+0.93*(ymax-ymin)
+    ypad=0.04
+    fontsize=12
+    axarr.text(xpos,ypos,smstr,fontsize=fontsize)
+    axarr.text(xpos,ypos-ypad,zstr,fontsize=fontsize)
+
     plt.savefig(plotFile)
+
+def makeSingleRadRedPlot(plotFile,zbins,smbins,zz,sm,satRad,sat,satCorr,field,cen):
+# this is intended to plot a single panel separate from the multi-panel plot made by makeRadPlot
+
+    xmin=0.
+    xmax=1.19
+    axarr=setupPlotArray(1,1,figsize=(6,6),xlim=(xmin,xmax),ylim=(0,1),ytitle=r'Fraction $|_{\rm M_{\star},z,red}$')
+    cenRad=0.
+    fieldRad=1.1
+
+    nsplit=3 # how many color morph categories are there
+
+    # get y-values and errors for plotting
+    # note we'll use satCorr values for means, but use sat (uncorrected) for computing bootstrap errors
+    satVals=getCMFracRad(sat,sm,zz,nsplit)
+    satCorrVals=getCMFracRad(satCorr,sm,zz,nsplit)
+    fieldVals=getCMFracRad(field,sm,zz,nsplit)
+
+    # now combine sph and b+d categories
+    satVals=(satVals[0]+satVals[1],satVals[2],satVals[3])
+    satCorrVals=(satCorrVals[0]+satCorrVals[1],satCorrVals[2],satCorrVals[3])
+    fieldVals=(fieldVals[0]+fieldVals[1],fieldVals[2],fieldVals[3])
+
+    satErrs=getCMErr(satVals)
+    fieldErrs=getCMErr(fieldVals)
+
+    oplotRad(axarr,sm,zz,satRad,satCorrVals,errs=satErrs,errflag=1,labelflag=2)
+    oplotRad(axarr,sm,zz,fieldRad,fieldVals,errs=fieldErrs,errflag=1,labelflag=3)
+
+    plotSingleRadLegend(loc="center left")
+
+    zstr=r"z=["+str(zbins[zz])+", "+str(zbins[zz+1])+")"
+    smstr=r"log(M$_{\star}$/M$_{\odot}$)=["+str(smbins[sm])+", "+str(smbins[sm+1])+")"
+
+    xpos=xmin+0.6*(xmax-xmin)
+    ymin=axarr.get_ylim()[0]
+    ymax=axarr.get_ylim()[1]
+    ypos=ymin+0.51*(ymax-ymin)
+    ypad=0.04
+    fontsize=12
+    axarr.text(xpos,ypos,smstr,fontsize=fontsize)
+    axarr.text(xpos,ypos-ypad,zstr,fontsize=fontsize)
+
+    plt.savefig(plotFile)
+
 
 def makeRadPlot(plotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen):
 # plot fractions of color/morph types vs R/R200 in separate panels for z and SM bins
 
-    axarr=setupPlotArray(zbins.size-1,smbins.size-1)
+#    figsize=((smbins.size-1)*2.5+1,(zbins.size-1)*1.6+1) # default (8,6)
+    figsize=((smbins.size-1)*2.5+1,(zbins.size-1)*1.6+2) # default (8,6)
+    axarr=setupPlotArray(zbins.size-1,smbins.size-1,figsize=figsize,xlim=(-0.,1.19))
     cenRad=0.
     fieldRad=1.1
+
+    nsplit=6 # how many color morph categories are there
 
     for sm in range(smbins.size-1):
          for zz in range(zbins.size-1):
               if(complete[sm,zz]==1):
-                   oplotRad(axarr[zz,sm],sat,sm,zz,satRad,1,1)
-#                   oplotRad(axarr[zz,sm],satCorr,sm,zz,satRad,0,0)
-                   oplotRad(axarr[zz,sm],field,sm,zz,fieldRad,1,0)
-                   oplotRad(axarr[zz,sm],cen,sm,zz,cenRad,1,0)
+                  # get y-values and errors for plotting
+                  # note we'll use satCorr values for means, but use sat (uncorrected) for computing bootstrap errors
+                  cenVals=getCMFracRad(cen,sm,zz,nsplit)
+                  satVals=getCMFracRad(sat,sm,zz,nsplit)
+                  satCorrVals=getCMFracRad(satCorr,sm,zz,nsplit)
+                  fieldVals=getCMFracRad(field,sm,zz,nsplit)
 
-                   if(zz==0):
-                        setSMTitle(axarr[zz,sm],smbins,sm)
-                   if(sm==smbins.size-2):
-                        setZTitle(axarr[zz,sm],zbins,zz,12,False)
+                  cenErrs=getCMErr(cenVals)
+                  satErrs=getCMErr(satVals)
+                  fieldErrs=getCMErr(fieldVals)
+
+                  oplotRad(axarr[zz,sm],sm,zz,satRad,satCorrVals,errs=satErrs,errflag=1,labelflag=1)
+                  oplotRad(axarr[zz,sm],sm,zz,fieldRad,fieldVals,errs=fieldErrs,errflag=1,labelflag=0)
+                  oplotRad(axarr[zz,sm],sm,zz,cenRad,cenVals,errs=cenErrs,errflag=1,labelflag=0)
+
+                  if(zz==0):
+                      setSMTitle(axarr[zz,sm],smbins,sm)
+                  if(sm==smbins.size-2):
+                      setZTitle(axarr[zz,sm],zbins,zz,12,False)
 
               else:
                    hidePanel(axarr,zz,sm)
 
+    plt.sca(axarr[-1,1]) # change focus to panel adjacent to bottom left to get labels
     plotRadLegend()
     plt.savefig(plotFile)
 
@@ -600,13 +699,25 @@ def makeZPlot(plotFile,smbins,rbins,zVals,complete,sat,satCorr,field,cen):
      
     axarr=setupPlotArray(rbins.size+1,smbins.size-1,xtitle='Redshift',ytitle=r'Fraction $|_{\rm M_{\star},R/R_{200{\rm c}}}$',figsize=(8,8),xlim=(0.15,1.08),ylim=(-0.03,0.75))
 
+    nsplit=6
+
     for sm in range(smbins.size-1):
-         oplotZ(axarr[0,sm],cen,sm,0,zVals,complete[sm,:],1,0)
+         cenVals=getCMFracZ(cen,sm,0,nsplit)
+         cenErrs=getCMErr(cenVals,sm,0,nsplit)
+         oplotZ(axarr[0,sm],sm,0,complete[sm,:],zVals,cenVals,errs=cenErrs,errflag=1,labelflag=0)
+
          setSMTitle(axarr[0,sm],smbins,sm)
          for rr in range(1,rbins.size):
-              oplotZ(axarr[rr,sm],sat,sm,rr,zVals,complete[sm,:],1,1)
-#              oplotZ(axarr[rr,sm],satCorr,sm,rr,zVals,complete[sm,:],0,0)
-         oplotZ(axarr[-1,sm],field,sm,-1,zVals,complete[sm,:],1,0)
+             satVals=getCMFracZ(sat,sm,rr,nsplit)
+             satCorrVals=getCMFracZ(satCorr,sm,rr,nsplit)
+
+             satErrs=getCMErr(satVals)
+
+             oplotZ(axarr[rr,sm],sm,rr,complete[sm,:],zVals,satCorrVals,errs=satErrs,errflag=1,labelflag=1)
+
+         fieldVals=getCMFracZ(field,sm,-1,nsplit)
+         fieldErrs=getCMErr(fieldVals)
+         oplotZ(axarr[-1,sm],sm,-1,complete[sm,:],zVals,fieldVals,errs=fieldErrs,errflag=1,labelflag=0)
 
 
     for rr in range(rbins.size-1+2):
@@ -620,14 +731,22 @@ def makeSmallZPlot(plotFile,smbins,rbins,zVals,complete,sat,satCorr,field):
     
     axarr=setupPlotArray(rbins.size,smbins.size-1,xtitle='Redshift',ytitle=r'Fraction $|_{\rm M_{\star},R/R_{200{\rm c}}}$',figsize=(6,8),xlim=(0.15,1.08),ylim=(-0.03,0.75))
 
+    nsplit=6
+    
     for sm in range(smbins.size-1):
-#         oplotZ(axarr[0,sm],cen,sm,0,zVals,complete[sm,:],1,0)
          setSMTitle(axarr[0,sm],smbins,sm)
-         for rr in range(1,rbins.size):
-              oplotZ(axarr[rr-1,sm],sat,sm,rr,zVals,complete[sm,:],1,1)
-#              oplotZ(axarr[rr,sm],satCorr,sm,rr,zVals,complete[sm,:],0,0)
-         oplotZ(axarr[-1,sm],field,sm,-1,zVals,complete[sm,:],1,0)
 
+         for rr in range(1,rbins.size):
+             satVals=getCMFracZ(sat,sm,rr,nsplit)
+             satCorrVals=getCMFracZ(satCorr,sm,rr,nsplit)
+
+             satErrs=getCMErr(satVals)
+
+             oplotZ(axarr[rr-1,sm],sm,rr,complete[sm,:],zVals,satCorrVals,errs=satErrs,errflag=1,labelflag=0)
+
+         fieldVals=getCMFracZ(field,sm,-1,nsplit)
+         fieldErrs=getCMErr(fieldVals)
+         oplotZ(axarr[-1,sm],sm,-1,complete[sm,:],zVals,fieldVals,errs=fieldErrs,errflag=1,labelflag=0)
 
     for rr in range(1,rbins.size+1):
          setRadTitle(axarr[rr-1,-1],rbins,rr,12)
@@ -984,11 +1103,12 @@ if __name__ == '__main__':
     morph=assignMorph(acs,morphType)
 
     # setup bins in SM, z, color, morphology, and group-centric radius
-    smbins=np.array([9.8,10.3,10.7,11.5])
-    zbins=np.array([0.2,0.8,1.0])
-    complete=np.array([[1,0],[1,1],[1,1]]) # update by hand with smbins, zbins
-    #    zbins=np.array([0.2,0.5,0.8,1.0])
-    #   complete=np.array([[1,1,0],[1,1,1],[1,1,1]]) # update by hand with smbins, zbins
+    #    smbins=np.array([9.8,10.3,10.7,11.5])
+    #    zbins=np.array([0.2,0.8,1.0])
+    #    complete=np.array([[1,0],[1,1],[1,1]]) # update by hand with smbins, zbins
+    smbins=np.array([9.8,10.3,10.7])
+    zbins=np.array([0.2,0.5,0.8,1.0])
+    complete=np.array([[1,1,0],[1,1,1]]) # update by hand with smbins, zbins
     #smbins=np.array([9.6,9.8,10.0,10.2,10.4,10.6,10.8,11.0,11.2,11.4,11.6])
     #zbins=np.array([0.2,0.4,0.6,0.8,1.0])
 
@@ -1001,20 +1121,37 @@ if __name__ == '__main__':
     smVals=[np.median((smbins[sm],smbins[sm+1])) for sm in range(smbins.size-1)]
 
     # put galaxies in grid of bins
-#    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
+    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
 
     # apply corrections to the satellite population for contamination from field galaxies
-#    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
+    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
     # make plot of fraction of color/morph types vs R/R200 with separate panels for each SM, z bin.
     radPlotFile=plotDir+"satrad_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
-#    makeRadPlot(radPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
+    makeRadPlot(radPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
 
     singleRadPlotFile=plotDir+"satrad_single_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
-#    makeSingleRadPlot(singleRadPlotFile,zbins,smbins,0,0,satRad,sat,satCorr,field,cen)
+    makeSingleRadPlot(singleRadPlotFile,zbins,smbins,0,0,satRad,sat,satCorr,field,cen)
 
     bamfordPlotFile=plotDir+"bamford_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
 #    makeBamfordPlot(bamfordPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
+
+
+
+    # redo bins for single red rad plot
+    smbins=np.array([9.8,10.3,10.7,11.5])
+    zbins=np.array([0.2,0.8,1.0])
+    complete=np.array([[1,0],[1,1],[1,1]]) # update by hand with smbins, zbins
+
+    # put galaxies in grid of bins
+    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
+
+    # apply corrections to the satellite population for contamination from field galaxies
+    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
+
+    singleRadRedPlotFile=plotDir+"satradred_single_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
+    makeSingleRadRedPlot(singleRadRedPlotFile,zbins,smbins,0,0,satRad,sat,satCorr,field,cen)
+
 
 
     # now make different bins for the plot of z-dependence
@@ -1034,17 +1171,17 @@ if __name__ == '__main__':
     zVals=[np.median((zbins[zz],zbins[zz+1])) for zz in range(zbins.size-1)]
 
     # put galaxies in grid of bins
-#    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
+    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
 
     # apply corrections to the satellite population for contamination from field galaxies
-#    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
+    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
 
     zPlotFile=plotDir+"satz_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
 #    makeZPlot(zPlotFile,smbins,rbins,zVals,complete,sat,satCorr,field,cen)
 
     smallZPlotFile=plotDir+"satz_small_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
-#    makeSmallZPlot(smallZPlotFile,smbins[0:-1],rbins,zVals,complete,sat,satCorr,field)
+    makeSmallZPlot(smallZPlotFile,smbins[0:-1],rbins,zVals,complete,sat,satCorr,field)
 
 
     zbins=np.array([0.2,0.4,0.6,0.8,1.0])
@@ -1052,10 +1189,10 @@ if __name__ == '__main__':
     rbins=np.array([0.01,1.0])
 
     # put galaxies in grid of bins
-    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
+#    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
 
     sdssZPlotFile=plotDir+"satz_sdss_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
-    makeSDSSZPlot(sdssZPlotFile,smbins,rbins,zVals,complete,sat,field,cen)
+#    makeSDSSZPlot(sdssZPlotFile,smbins,rbins,zVals,complete,sat,field,cen)
 
 
 
