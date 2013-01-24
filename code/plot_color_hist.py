@@ -10,8 +10,9 @@ cosmo=cosmology.Cosmo(h=0.72,omega_m=0.258,omega_l=0.742) # WMAP5
 
 def histPlotLegend():
     xpad=0.1
-    plt.legend(prop={'size':12},numpoints=1,loc='center right',bbox_to_anchor=(-1-xpad,0.5),frameon=False)
-
+    #    plt.legend(prop={'size':12},numpoints=1,loc='center right',bbox_to_anchor=(-1-xpad,0.5),frameon=False)
+    plt.legend(prop={'size':12},numpoints=1,loc='center right',bbox_to_anchor=(-xpad,0.5),frameon=False)
+    
 def oplotZTitle(zRange,xPos,yPos,fontsize):
     zStr=r"z = [{}-{})".format(zRange[0],zRange[1])
     plt.gca().text(xPos,yPos,zStr,verticalalignment="top",fontsize=fontsize)
@@ -85,7 +86,7 @@ def selectHistData(data,morph,zRange=np.array([0,1]),smRange=np.array([2,15]),mo
          (data[zphot] < zRange[1]) &
          (data['KEVIN_MSTAR'] >= smRange[0]) &
          (data['KEVIN_MSTAR'] < smRange[1]) &
-         (map(lambda x: x in morphDict[morphType],morph))
+         (map(lambda x: x in morphDict[morphType],morph)) &
         )
 
     return sel
@@ -102,7 +103,8 @@ def makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,linestyl
         ylim=np.array([0,499])
         logBool=False
 
-    axarr=setupPlotArray(zbins.size-1,smbins.size-1,xtitle=r"NUV-r$^+$",ytitle="N",xlim=cRange,ylim=ylim)
+    figsize=((smbins.size-1)*2.5+1,(zbins.size-1)*1.6+1) # default (8,6)
+    axarr=setupPlotArray(zbins.size-1,smbins.size-1,xtitle=r"NUV-r$^+$",ytitle="N",xlim=cRange,ylim=ylim,figsize=figsize)
 
     # loop over sm bins and z bins selecting data and plotting histograms in each panel
     for sm in range(smbins.size-1):
@@ -127,6 +129,7 @@ def makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,linestyl
                    hidePanel(axarr,zz,sm)
 
     # add legend to first panel
+    plt.sca(axarr[-1,1]) # change focus to panel adjacent to bottom left to get labels
     histPlotLegend()
                   
     # save figure
@@ -192,9 +195,12 @@ if __name__ == '__main__':
     halomass=assignHaloMass(acs,group,ztype)
     morph=assignMorph(acs,"zest")
 
-    smbins=np.array([9.8,10.3,10.7,11.5])
+    #    smbins=np.array([9.8,10.3,10.7,11.5])
+    #    zbins=np.array([0.2,0.5,0.8,1.0])
+    #    complete=np.array([[1,1,0],[1,1,1],[1,1,1]]) # update by hand with smbins, zbins
+    smbins=np.array([9.8,10.3,10.7])
     zbins=np.array([0.2,0.5,0.8,1.0])
-    complete=np.array([[1,1,0],[1,1,1],[1,1,1]]) # update by hand with smbins, zbins
+    complete=np.array([[1,1,0],[1,1,1]]) # update by hand with smbins, zbins
 
     morphTypes=np.array(["Late Disk","Bulge+Disk","Spheroidal"])
 
@@ -207,9 +213,9 @@ if __name__ == '__main__':
     logOpt="log"
     histPlotFile=plotDir+"color_hist_{}.pdf".format(logOpt)
 
-    #    makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,linestyles,logOpt)
+    makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,linestyles,logOpt)
 
     # options for multi-panel color-color scatter plot
     scatterPlotFile=plotDir+"color_scatter.pdf"
 
-    makeScatterMultiPlot(scatterPlotFile,acs,morph,zbins,smbins,labels,colors,pointstyles)
+#    makeScatterMultiPlot(scatterPlotFile,acs,morph,zbins,smbins,labels,colors,pointstyles)
