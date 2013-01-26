@@ -44,18 +44,21 @@ def addVolumeAxis(zRange):
     ax.yaxis.set_ticks(tickLocs*vFactor)
     ax.yaxis.set_ticklabels(tickLocs)
 
-def makeHistPlot(ax, arrs, labels, colors, linestyles, zRange, smRange, cRange, cBin, logOpt):
+def makeHistPlot(ax, arrs, labels, colors, hatchstyles, zRange, smRange, cRange, cBin, logOpt):
 
     cSplit=3.5
     nCBins=(cRange[1]-cRange[0])/cBin
 
     lw=2
 
+    fill=np.array([False,False,True])
+    alpha=np.array([1,1,0.5])
+
     #    setupHistPlot()
     #    plt.xlim(cRange)
-    ax.hist(arrs,histtype='step',range=cRange,bins=nCBins,label=labels,color=colors,lw=lw,log=logOpt)
+    [ax.hist(arrs[ii],histtype='step',hatch=hatchstyles[ii],range=cRange,bins=nCBins,label=labels[ii],color=colors[ii],lw=lw,log=logOpt,fill=fill[ii],alpha=alpha[ii]) for ii in range(len(arrs))]
 
-    ax.plot((cSplit,cSplit),ax.get_ylim(),color="gray",linestyle=':')
+    ax.plot((cSplit,cSplit),ax.get_ylim(),color="gray",linestyle=':',lw=lw)
     
     #    histPlotLegend()
 
@@ -86,12 +89,12 @@ def selectHistData(data,morph,zRange=np.array([0,1]),smRange=np.array([2,15]),mo
          (data[zphot] < zRange[1]) &
          (data['KEVIN_MSTAR'] >= smRange[0]) &
          (data['KEVIN_MSTAR'] < smRange[1]) &
-         (map(lambda x: x in morphDict[morphType],morph)) &
+         (map(lambda x: x in morphDict[morphType],morph))
         )
 
     return sel
 
-def makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,linestyles,logOpt):
+def makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,hatchstyles,logOpt):
 
     cRange=np.array([-1.,6.5])
     cBin=0.5
@@ -118,7 +121,7 @@ def makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,linestyl
                   arrs=[acs[sel]['MNUV_MR'] for sel in sels]
 
                   # plot histograms
-                  makeHistPlot(axarr[zz,sm],arrs,labels,colors,linestyles,zRange,smRange,cRange,cBin,logBool)
+                  makeHistPlot(axarr[zz,sm],arrs,labels,colors,hatchstyles,zRange,smRange,cRange,cBin,logBool)
 
                   if(zz==0):
                        setSMTitle(axarr[zz,sm],smbins,sm)
@@ -206,14 +209,15 @@ if __name__ == '__main__':
 
     labels=[morphTypes[ii] for ii in range(morphTypes.size)]
     colors=["blue","green","red"]
-    linestyles=["-","--",":"] # ["solid","dashed","dotted"]
+#    linestyles=["-","--",":"] # ["solid","dashed","dotted"]
+    hatchstyles=['/','.','o']
     pointstyles=['o','o','o']
 
     # options for multi-panel hist plot
     logOpt="log"
     histPlotFile=plotDir+"color_hist_{}.pdf".format(logOpt)
 
-    makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,linestyles,logOpt)
+    makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,hatchstyles,logOpt)
 
     # options for multi-panel color-color scatter plot
     scatterPlotFile=plotDir+"color_scatter.pdf"
