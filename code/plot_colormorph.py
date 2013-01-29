@@ -527,7 +527,11 @@ def setRadTitle(ax,rbins,rr,fontsize):
      elif((rr==rbins.size) | (rr==-1)):
           rstr=r"Field"
      else:
-          rstr=r"R/R$_{200{\rm c}}$=["+str(rbins[rr-1])+", "+str(rbins[rr])+")"
+#          rstr=r"R/R$_{200{\rm c}}$=["+str(rbins[rr-1])+", "+str(rbins[rr])+")"
+         if(rr==1):
+             rstr=r"Inner Satellites"
+         elif(rr==2):
+             rstr=r"Outer Satellites"
      xpos=1.05*(ax.get_xlim()[1]-ax.get_xlim()[0])+ax.get_xlim()[0]
      ypos=np.mean(ax.get_ylim())
      ax.text(xpos,ypos,rstr,fontsize=fontsize,rotation=270,fontweight='heavy',verticalalignment='center')
@@ -590,7 +594,7 @@ def makeSingleRadPlot(plotFile,zbins,smbins,zz,sm,satRad,sat,satCorr,field,cen):
 
     oplotRad(axarr,sm,zz,satRad,satCorrVals,errs=satErrs,errflag=1,labelflag=1)
     oplotRad(axarr,sm,zz,fieldRad,fieldVals,errs=fieldErrs,errflag=1,labelflag=0)
-    oplotRad(axarr,sm,zz,cenRad,cenVals,errs=cenErrs,errflag=1,labelflag=0)
+#    oplotRad(axarr,sm,zz,cenRad,cenVals,errs=cenErrs,errflag=1,labelflag=0)
 
     plotSingleRadLegend()
 
@@ -680,7 +684,7 @@ def makeRadPlot(plotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen):
 
                   oplotRad(axarr[zz,sm],sm,zz,satRad,satCorrVals,errs=satErrs,errflag=1,labelflag=1)
                   oplotRad(axarr[zz,sm],sm,zz,fieldRad,fieldVals,errs=fieldErrs,errflag=1,labelflag=0)
-                  oplotRad(axarr[zz,sm],sm,zz,cenRad,cenVals,errs=cenErrs,errflag=1,labelflag=0)
+#                  oplotRad(axarr[zz,sm],sm,zz,cenRad,cenVals,errs=cenErrs,errflag=1,labelflag=0)
 
                   if(zz==0):
                       setSMTitle(axarr[zz,sm],smbins,sm)
@@ -729,7 +733,7 @@ def makeZPlot(plotFile,smbins,rbins,zVals,complete,sat,satCorr,field,cen):
 def makeSmallZPlot(plotFile,smbins,rbins,zVals,complete,sat,satCorr,field):
 # limited version of makeZPlot, intended to drop high-mass column and centrals row
     
-    axarr=setupPlotArray(rbins.size,smbins.size-1,xtitle='Redshift',ytitle=r'Fraction $|_{\rm M_{\star},R/R_{200{\rm c}}}$',figsize=(6,8),xlim=(0.15,1.08),ylim=(-0.03,0.75))
+    axarr=setupPlotArray(rbins.size,smbins.size-1,xtitle='Redshift',ytitle=r'Fraction $|_{\rm M_{\star},R/R_{200{\rm c}}}$',figsize=(6,8),xlim=(0.15,1.08))
 
     nsplit=6
     
@@ -1065,11 +1069,13 @@ def printCensusTable(censusTableFile,cen,sat,field,zbins,smbins):
      out.write("% remove incomplete sections by hand\n")
 
      nzbins=zbins.size-1
-     nsmbins=smbins.size-1
+     nsmbins=smbins.size-2 # ignore last sm bin used for getting Ngrousp
 
      for zz in range(nzbins):
-          out.write("\sidehead{$z={}-{}$}\n".format(zbins[zz],zbins[zz+1]))
-          out.write("Centrals & "+ string.join([str(int(cen[sm][zz][0][0])) for sm in range(nsmbins)], " & ") + " \\\\ \n")
+          ngroups=sliceArr(cen,sm=-2,zz=zz,cc=-2,mm=-2)
+
+          out.write("\sidehead{{$z={}-{}; N_{{\rm groups}}={}$}}\n".format(zbins[zz],zbins[zz+1],ngroups))
+#          out.write("Centrals & "+ string.join([str(int(cen[sm][zz][0][0])) for sm in range(nsmbins)], " & ") + " \\\\ \n")
           out.write("Satellites & "+ string.join([str(int(sat[sm][zz][0][0][0])) for sm in range(nsmbins)], " & ") + " \\\\ \n")
           out.write("Field & "+ string.join([str(int(field[sm][zz][0][0])) for sm in range(nsmbins)], " & ") + " \\\\ \n")
 
@@ -1106,7 +1112,7 @@ if __name__ == '__main__':
     #    smbins=np.array([9.8,10.3,10.7,11.5])
     #    zbins=np.array([0.2,0.8,1.0])
     #    complete=np.array([[1,0],[1,1],[1,1]]) # update by hand with smbins, zbins
-    smbins=np.array([9.8,10.3,10.7])
+    smbins=np.array([9.8,10.3,10.8])
     zbins=np.array([0.2,0.5,0.8,1.0])
     complete=np.array([[1,1,0],[1,1,1]]) # update by hand with smbins, zbins
     #smbins=np.array([9.6,9.8,10.0,10.2,10.4,10.6,10.8,11.0,11.2,11.4,11.6])
@@ -1139,9 +1145,9 @@ if __name__ == '__main__':
 
 
     # redo bins for single red rad plot
-    smbins=np.array([9.8,10.3,10.7,11.5])
-    zbins=np.array([0.2,0.8,1.0])
-    complete=np.array([[1,0],[1,1],[1,1]]) # update by hand with smbins, zbins
+    smbins=np.array([9.8,10.3])
+    zbins=np.array([0.2,0.8])
+    complete=np.array([[1,1],[1,1]]) # update by hand with smbins, zbins
 
     # put galaxies in grid of bins
     cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
@@ -1159,7 +1165,7 @@ if __name__ == '__main__':
     minmh=13.0
     maxmh=14.0
 
-    smbins=np.array([9.8,10.3,10.7,11.5])
+    smbins=np.array([9.8,10.3,10.8,11.5])
     zbins=np.array([0.2,0.5,0.8,1.0])
     complete=np.array([[1,1,0],[1,1,1],[1,1,1]]) # update by hand with smbins, zbins
 
@@ -1200,14 +1206,14 @@ if __name__ == '__main__':
     minmh=13.0
     maxmh=14.0
 
-    smbins=np.array([9.8,10.3,10.7,11.5,15.0]) # last bin is to get all centrals >11.5
+    smbins=np.array([9.8,10.3,10.8,15.0]) # last bin is to get all centrals for Ngroups
     zbins=np.array([0.2,0.5,0.8,1.0])
 
     cbins=np.array([-2.5,1.5]) # all
     mbins=np.array([-0.5,3.5]) # all
     rbins=np.array([0.01,1.0]) # all
 
-    #cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype)
+    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
 
-    #censusTableFile=plotDir+"census_{}_mh{}-{}.tex".format(ztype,minmh,maxmh)
-    #printCensusTable(censusTableFile,cen,sat,field,zbins,smbins)
+    censusTableFile=plotDir+"census_{}_mh{}-{}.tex".format(ztype,minmh,maxmh)
+    printCensusTable(censusTableFile,cen,sat,field,zbins,smbins)
