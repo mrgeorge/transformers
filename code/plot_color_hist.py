@@ -100,7 +100,7 @@ def makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,hatchsty
     cBin=0.5
 
     if(logOpt=="log"):
-        ylim=np.array([5,700])
+        ylim=np.array([5,990])
         logBool=True
     else:
         ylim=np.array([0,499])
@@ -201,7 +201,7 @@ if __name__ == '__main__':
     #    smbins=np.array([9.8,10.3,10.7,11.5])
     #    zbins=np.array([0.2,0.5,0.8,1.0])
     #    complete=np.array([[1,1,0],[1,1,1],[1,1,1]]) # update by hand with smbins, zbins
-    smbins=np.array([9.8,10.3,10.7])
+    smbins=np.array([9.8,10.3,10.8])
     zbins=np.array([0.2,0.5,0.8,1.0])
     complete=np.array([[1,1,0],[1,1,1]]) # update by hand with smbins, zbins
 
@@ -210,7 +210,7 @@ if __name__ == '__main__':
     labels=[morphTypes[ii] for ii in range(morphTypes.size)]
     colors=["blue","green","red"]
 #    linestyles=["-","--",":"] # ["solid","dashed","dotted"]
-    hatchstyles=['/','.','o']
+    hatchstyles=['/','-','o']
     pointstyles=['o','o','o']
 
     # options for multi-panel hist plot
