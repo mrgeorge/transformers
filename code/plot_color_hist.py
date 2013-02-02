@@ -44,19 +44,16 @@ def addVolumeAxis(zRange):
     ax.yaxis.set_ticks(tickLocs*vFactor)
     ax.yaxis.set_ticklabels(tickLocs)
 
-def makeHistPlot(ax, arrs, labels, colors, hatchstyles, zRange, smRange, cRange, cBin, logOpt):
+def makeHistPlot(ax, arrs, labels, colors, hatchstyles, fill, alpha, zRange, smRange, cRange, cBin, logOpt):
 
     cSplit=3.5
     nCBins=(cRange[1]-cRange[0])/cBin
 
     lw=2
 
-    fill=np.array([False,False,True])
-    alpha=np.array([1,1,0.5])
-
     #    setupHistPlot()
     #    plt.xlim(cRange)
-    [ax.hist(arrs[ii],histtype='step',hatch=hatchstyles[ii],range=cRange,bins=nCBins,label=labels[ii],color=colors[ii],lw=lw,log=logOpt,fill=fill[ii],alpha=alpha[ii]) for ii in range(len(arrs))]
+    [ax.hist(arrs[ii],histtype='step',hatch=hatchstyles[ii],range=cRange,bins=nCBins,label=labels[ii],color=colors[ii],facecolor=colors[ii],lw=lw,log=logOpt,fill=fill[ii],alpha=alpha[ii]) for ii in range(len(arrs))]
 
     ax.plot((cSplit,cSplit),ax.get_ylim(),color="gray",linestyle=':',lw=lw)
     
@@ -94,13 +91,13 @@ def selectHistData(data,morph,zRange=np.array([0,1]),smRange=np.array([2,15]),mo
 
     return sel
 
-def makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,hatchstyles,logOpt):
+def makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,hatchstyles,fill,alpha,logOpt):
 
     cRange=np.array([-1.,6.5])
     cBin=0.5
 
     if(logOpt=="log"):
-        ylim=np.array([5,990])
+        ylim=np.array([9,990])
         logBool=True
     else:
         ylim=np.array([0,499])
@@ -121,7 +118,7 @@ def makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,hatchsty
                   arrs=[acs[sel]['MNUV_MR'] for sel in sels]
 
                   # plot histograms
-                  makeHistPlot(axarr[zz,sm],arrs,labels,colors,hatchstyles,zRange,smRange,cRange,cBin,logBool)
+                  makeHistPlot(axarr[zz,sm],arrs,labels,colors,hatchstyles,fill,alpha,zRange,smRange,cRange,cBin,logBool)
 
                   if(zz==0):
                        setSMTitle(axarr[zz,sm],smbins,sm)
@@ -208,16 +205,19 @@ if __name__ == '__main__':
     morphTypes=np.array(["Late Disk","Bulge+Disk","Spheroidal"])
 
     labels=[morphTypes[ii] for ii in range(morphTypes.size)]
-    colors=["blue","green","red"]
+    #    colors=["blue","green","red"]
+    colors=["indigo","goldenrod","gray"]
 #    linestyles=["-","--",":"] # ["solid","dashed","dotted"]
-    hatchstyles=['/','-','o']
+    hatchstyles=['/','\\','']
     pointstyles=['o','o','o']
+    fill=np.array([False,False,True])
+    alpha=np.array([1,1,0.3])
 
     # options for multi-panel hist plot
     logOpt="log"
     histPlotFile=plotDir+"color_hist_{}.pdf".format(logOpt)
 
-    makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,hatchstyles,logOpt)
+    makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,hatchstyles,fill,alpha,logOpt)
 
     # options for multi-panel color-color scatter plot
     scatterPlotFile=plotDir+"color_scatter.pdf"
