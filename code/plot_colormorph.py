@@ -21,6 +21,8 @@ def cleanCatalogs(acs,group,minz,maxz,ztype):
          (acs['GOOD_ZPHOT_LENS'] == 1) &
          (acs['MU_CLASS'] == 1))# &
 #         (acs['TYPE'] == 0)) # added 9/26/12 to remove masked regions/X-ray sources/star SED types from Ilbert's catalog
+# this type cut has not been applied for colormorph paper - it doesn't make much of a difference and leaves better statistics when those galaxies are included in the sample.
+    
     acs=acs[sel]
 
     sel=((group['FLAG_INCLUDE'] == 1) &
@@ -613,7 +615,7 @@ def makeSingleRadPlot(plotFile,zbins,smbins,zz,sm,satRad,sat,satCorr,field,cen):
     plt.savefig(plotFile)
 
 def makeSingleRadRedPlot(plotFile,zbins,smbins,zz,sm,satRad,sat,satCorr,field,cen):
-# this is intended to plot a single panel separate from the multi-panel plot made by makeRadPlot
+# make a similar plot as makeSingleRadPlot, but show the morph fractions among quenched galaxies
 
     xmin=0.
     xmax=1.19
@@ -1127,17 +1129,17 @@ if __name__ == '__main__':
     smVals=[np.median((smbins[sm],smbins[sm+1])) for sm in range(smbins.size-1)]
 
     # put galaxies in grid of bins
-    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
+#    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
 
     # apply corrections to the satellite population for contamination from field galaxies
-    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
+#    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
     # make plot of fraction of color/morph types vs R/R200 with separate panels for each SM, z bin.
     radPlotFile=plotDir+"satrad_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
-    makeRadPlot(radPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
+#    makeRadPlot(radPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
 
     singleRadPlotFile=plotDir+"satrad_single_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
-    makeSingleRadPlot(singleRadPlotFile,zbins,smbins,0,0,satRad,sat,satCorr,field,cen)
+#    makeSingleRadPlot(singleRadPlotFile,zbins,smbins,0,0,satRad,sat,satCorr,field,cen)
 
     bamfordPlotFile=plotDir+"bamford_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
 #    makeBamfordPlot(bamfordPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
@@ -1150,13 +1152,13 @@ if __name__ == '__main__':
     complete=np.array([[1,1],[1,1]]) # update by hand with smbins, zbins
 
     # put galaxies in grid of bins
-    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
+#    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
 
     # apply corrections to the satellite population for contamination from field galaxies
-    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
+#    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
     singleRadRedPlotFile=plotDir+"satradred_single_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
-    makeSingleRadRedPlot(singleRadRedPlotFile,zbins,smbins,0,0,satRad,sat,satCorr,field,cen)
+#    makeSingleRadRedPlot(singleRadRedPlotFile,zbins,smbins,0,0,satRad,sat,satCorr,field,cen)
 
 
 
@@ -1177,17 +1179,17 @@ if __name__ == '__main__':
     zVals=[np.median((zbins[zz],zbins[zz+1])) for zz in range(zbins.size-1)]
 
     # put galaxies in grid of bins
-    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
+#    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
 
     # apply corrections to the satellite population for contamination from field galaxies
-    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
+#    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
 
     zPlotFile=plotDir+"satz_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
 #    makeZPlot(zPlotFile,smbins,rbins,zVals,complete,sat,satCorr,field,cen)
 
     smallZPlotFile=plotDir+"satz_small_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
-    makeSmallZPlot(smallZPlotFile,smbins[0:-1],rbins,zVals,complete,sat,satCorr,field)
+#    makeSmallZPlot(smallZPlotFile,smbins[0:-1],rbins,zVals,complete,sat,satCorr,field)
 
 
     zbins=np.array([0.2,0.4,0.6,0.8,1.0])
@@ -1217,3 +1219,22 @@ if __name__ == '__main__':
 
     censusTableFile=plotDir+"census_{}_mh{}-{}.tex".format(ztype,minmh,maxmh)
     printCensusTable(censusTableFile,cen,sat,field,zbins,smbins)
+
+
+
+    # print morph fractions from different catalogs for systematics discussion in paper
+#    morphTypes=np.array(["zest","tasca1","tasca2","tasca3","cassata","morph2005"])
+#    cbins=np.array([-2.5,1.5]) # all
+#    mbins=np.array([-0.5,0.5,1.5,2.5,3.5])
+#    rbins=np.array([0.01,1.0]) # all
+#
+#    smbins=np.array([9.8,10.3])
+#    zbins=np.array([0.2,0.5])
+#    
+#    for morphType in morphTypes:
+#        morph=assignMorph(acs,morphType)
+#        cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
+#
+#        print morphType
+#        print sat/np.sum(sat)
+
