@@ -7,14 +7,14 @@ import scipy.stats # for ranking data
 imDir="../images/twenty_arcsec/"
 imListFile=imDir+"acs_mem.list"
 
-minZ=0.1
-maxZ=1.0
+minZ=0.2
+maxZ=0.5
 zMed=np.median([minZ,maxZ])
-minSM=9.6
-maxSM=12
+minSM=9.8
+maxSM=10.4
 minMh=12.0
 maxMh=15.0
-colorSel="all"
+colorSel="blue"
 morph="all"
 zType="zp"
 
@@ -37,58 +37,50 @@ cmax=1.0 # 1 -> pure gray/black, lower to leave some color
 
 # get data
 fullData=readData(imListFile)
-selData=selectData(fullData, minZ, maxZ, minMh, maxMh, colorSel,morph, zType)
-sel=((selData['sm'] > minSM) & (selData['sm'] < maxSM))
-selData=selData[sel]
+data=selectData(fullData, minZ, maxZ, minMh, maxMh, colorSel,morph, zType)
+sel=((data['sm'] > minSM) & (data['sm'] < maxSM))
+data=data[sel]
 
 
-nPerSamp=64
-nSamp=int(selData.size/nPerSamp)
+# setup plot
+fig=plt.figure(1)
+plt.clf()
+plt.xlim((-0.1,1.1))
+plt.ylim((-0.1,1.1))
+plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'],'size':20})
+plt.rc('text', usetex=True)
+plt.rc('axes',linewidth=1.5)
+ax1=plt.gca()
+ax1.set_frame_on(False)
+ax1.get_xaxis().set_visible(False)
+ax1.get_yaxis().set_visible(False)
 
-for ss in range(nSamp):
-    print ss
-
-    data=selData[ss*nPerSamp:(ss+1)*nPerSamp]
-
-    # setup plot
-    fig=plt.figure(1)
-    plt.clf()
-    plt.xlim((-0.1,1.1))
-    plt.ylim((-0.1,1.1))
-    plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'],'size':20})
-    plt.rc('text', usetex=True)
-    plt.rc('axes',linewidth=1.5)
-    ax1=plt.gca()
-    ax1.set_frame_on(False)
-    ax1.get_xaxis().set_visible(False)
-    ax1.get_yaxis().set_visible(False)
-
-    img=fitsio.read(imDir+data['filename'][0]) # read first one to get params
-    fullImSize=20. # fits file is 20" on a side
-    imSize=mrg.rp2deg(30.,cosmo.Da(0,zMed)*1000)*3600 # plot a square of this size on a side (30 kpc in arcsec)
-    imSizePlot=0.2 # fraction of axis range
+img=fitsio.read(imDir+data['filename'][0]) # read first one to get params
+fullImSize=20. # fits file is 20" on a side
+imSize=mrg.rp2deg(30.,cosmo.Da(0,zMed)*1000)*3600 # plot a square of this size on a side (30 kpc in arcsec)
+imSizePlot=0.2 # fraction of axis range
 
 
-    # convert coordinates
+# convert coordinates
     
-    # for a polar plot showing distance from group center and azimuthal angle
-    #datax=data['r']*np.cos(data['theta']*(np.pi/180.))
-    #datay=data['r']*np.sin(data['theta']*(np.pi/180.))
+# for a polar plot showing distance from group center and azimuthal angle
+datax=data['r']*np.cos(data['theta']*(np.pi/180.))
+datay=data['r']*np.sin(data['theta']*(np.pi/180.))
 
-    # for an ordered grid to separate galaxies
-    nx=np.ceil(np.sqrt(data.size))
-    datax=(np.tile(range(int(nx)),nx)*2/nx-1)[0:data.size]
-    datay=(np.repeat(range(int(nx)),nx)*2/nx-1)[0:data.size]
+# for an ordered grid to separate galaxies
+#nx=np.ceil(np.sqrt(data.size))
+#datax=(np.tile(range(int(nx)),nx)*2/nx-1)[0:data.size]
+#datay=(np.repeat(range(int(nx)),nx)*2/nx-1)[0:data.size]
     
-    # fudge x and y coords with these values since plotGalaxies expects SM and R
-    data['r']=datax
-    data['sm']=datay
+# fudge x and y coords with these values since plotGalaxies expects SM and R
+data['r']=datax
+data['sm']=datay
 
-    plotGalaxies(data,imDir,fullImSize,imSize,imSizePlot,ax1,-1.0,1.0,-1.0,1.0,minColor,maxColor,c0,c1,cmap,pivot,cmin,cmax,nShades,False)
+plotGalaxies(data,imDir,fullImSize,imSize,imSizePlot,ax1,-1.0,1.0,-1.0,1.0,minColor,maxColor,c0,c1,cmap,pivot,cmin,cmax,nShades,False)
     
-    for oo in fig.findobj():
-        oo.set_clip_on(False)
+for oo in fig.findobj():
+    oo.set_clip_on(False)
 
-    figSize=(10,10)
-    plt.savefig("../plots/gsps{}.pdf".format(ss),bbox_inches="tight",dpi=300,figsize=figSize)
+figSize=(10,10)
+plt.savefig("../plots/art_blue.pdf",bbox_inches="tight",dpi=300,figsize=figSize)
 
