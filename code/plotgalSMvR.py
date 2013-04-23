@@ -375,7 +375,12 @@ def plotGalaxies(data,imDir,fullImSize,imSize,imSizePlot,ax1,minR,maxR,minSM,max
        nBelowFloor=0 # number not shown because whole image is below floor
        nNoSource=0 # number not shown because a source wasn't found in the middle of image
 
-       for ii in range(data.shape[0]):
+       # kludge to handle array of size 1
+       nData=data.size
+       if(nData==1):
+           data=np.repeat(data,2)
+
+       for ii in range(nData):
 
            # read and manipulate thumbnail image
            img=fitsio.read(imDir+data['filename'][ii])
