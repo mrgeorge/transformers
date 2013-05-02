@@ -184,6 +184,7 @@ if __name__ == '__main__':
     ztype="zp" # use zb for zbest (i.e. specz if available), else zp for photoz only
 
     plotDir="../plots/"
+    plotFmt="pdf" # pdf or eps
 
     # read group and galaxy catalogs
     acsFile="../../code/lensing18_20110914.fits"
@@ -215,11 +216,11 @@ if __name__ == '__main__':
 
     # options for multi-panel hist plot
     logOpt="log"
-    histPlotFile=plotDir+"color_hist_{}.pdf".format(logOpt)
+    histPlotFile=plotDir+"color_hist_{}.{}".format(logOpt,plotFmt)
 
     makeHistMultiPlot(histPlotFile,acs,morph,zbins,smbins,labels,colors,hatchstyles,fill,alpha,logOpt)
 
     # options for multi-panel color-color scatter plot
-    scatterPlotFile=plotDir+"color_scatter.pdf"
+    scatterPlotFile=plotDir+"color_scatter.{}".format(plotFmt)
 
 #    makeScatterMultiPlot(scatterPlotFile,acs,morph,zbins,smbins,labels,colors,pointstyles)

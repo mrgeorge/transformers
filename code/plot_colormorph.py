@@ -1098,6 +1098,7 @@ if __name__ == '__main__':
     centype="mmgg" # mmgg or cl to test effect of miscentering on radial trend
 
     plotDir="../plots/"
+    plotFmt="pdf" # pdf or eps
 
     # read group and galaxy catalogs
     acsFile="../../code/lensing18_20110914_morph.fits"
@@ -1129,19 +1130,19 @@ if __name__ == '__main__':
     smVals=[np.median((smbins[sm],smbins[sm+1])) for sm in range(smbins.size-1)]
 
     # put galaxies in grid of bins
-#    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
+    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
 
     # apply corrections to the satellite population for contamination from field galaxies
-#    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
+    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
     # make plot of fraction of color/morph types vs R/R200 with separate panels for each SM, z bin.
-    radPlotFile=plotDir+"satrad_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
-#    makeRadPlot(radPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
+    radPlotFile=plotDir+"satrad_{}_{}_{}_{}_mh{}-{}.{}".format(colourType,morphType,ztype,centype,minmh,maxmh,plotFmt)
+    makeRadPlot(radPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
 
-    singleRadPlotFile=plotDir+"satrad_single_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
-#    makeSingleRadPlot(singleRadPlotFile,zbins,smbins,0,0,satRad,sat,satCorr,field,cen)
+    singleRadPlotFile=plotDir+"satrad_single_{}_{}_{}_{}_mh{}-{}.{}".format(colourType,morphType,ztype,centype,minmh,maxmh,plotFmt)
+    makeSingleRadPlot(singleRadPlotFile,zbins,smbins,0,0,satRad,sat,satCorr,field,cen)
 
-    bamfordPlotFile=plotDir+"bamford_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
+    bamfordPlotFile=plotDir+"bamford_{}_{}_{}_{}_mh{}-{}.{}".format(colourType,morphType,ztype,centype,minmh,maxmh,plotFmt)
 #    makeBamfordPlot(bamfordPlotFile,zbins,smbins,satRad,complete,sat,satCorr,field,cen)
 
 
@@ -1152,13 +1153,13 @@ if __name__ == '__main__':
     complete=np.array([[1,1],[1,1]]) # update by hand with smbins, zbins
 
     # put galaxies in grid of bins
-#    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
+    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
 
     # apply corrections to the satellite population for contamination from field galaxies
-#    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
+    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
-    singleRadRedPlotFile=plotDir+"satradred_single_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
-#    makeSingleRadRedPlot(singleRadRedPlotFile,zbins,smbins,0,0,satRad,sat,satCorr,field,cen)
+    singleRadRedPlotFile=plotDir+"satradred_single_{}_{}_{}_{}_mh{}-{}.{}".format(colourType,morphType,ztype,centype,minmh,maxmh,plotFmt)
+    makeSingleRadRedPlot(singleRadRedPlotFile,zbins,smbins,0,0,satRad,sat,satCorr,field,cen)
 
 
 
@@ -1179,17 +1180,17 @@ if __name__ == '__main__':
     zVals=[np.median((zbins[zz],zbins[zz+1])) for zz in range(zbins.size-1)]
 
     # put galaxies in grid of bins
-#    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
+    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
 
     # apply corrections to the satellite population for contamination from field galaxies
-#    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
+    satCorr=contaminationCorrection(sat,field,acs,colour,morph,smbins,zbins,cbins,mbins,rbins,ztype)
 
 
-    zPlotFile=plotDir+"satz_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
+    zPlotFile=plotDir+"satz_{}_{}_{}_{}_mh{}-{}.{}".format(colourType,morphType,ztype,centype,minmh,maxmh,plotFmt)
 #    makeZPlot(zPlotFile,smbins,rbins,zVals,complete,sat,satCorr,field,cen)
 
-    smallZPlotFile=plotDir+"satz_small_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
-#    makeSmallZPlot(smallZPlotFile,smbins[0:-1],rbins,zVals,complete,sat,satCorr,field)
+    smallZPlotFile=plotDir+"satz_small_{}_{}_{}_{}_mh{}-{}.{}".format(colourType,morphType,ztype,centype,minmh,maxmh,plotFmt)
+    makeSmallZPlot(smallZPlotFile,smbins[0:-1],rbins,zVals,complete,sat,satCorr,field)
 
 
     zbins=np.array([0.2,0.4,0.6,0.8,1.0])
@@ -1199,7 +1200,7 @@ if __name__ == '__main__':
     # put galaxies in grid of bins
 #    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
 
-    sdssZPlotFile=plotDir+"satz_sdss_{}_{}_{}_{}_mh{}-{}.pdf".format(colourType,morphType,ztype,centype,minmh,maxmh)
+    sdssZPlotFile=plotDir+"satz_sdss_{}_{}_{}_{}_mh{}-{}.{}".format(colourType,morphType,ztype,centype,minmh,maxmh,plotFmt)
 #    makeSDSSZPlot(sdssZPlotFile,smbins,rbins,zVals,complete,sat,field,cen)
 
 
@@ -1215,10 +1216,10 @@ if __name__ == '__main__':
     mbins=np.array([-0.5,3.5]) # all
     rbins=np.array([0.01,1.0]) # all
 
-    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
+#    cen,sat,field=census(acs,group,halomass,colour,morph,smbins,zbins,cbins,mbins,rbins,minmh,maxmh,ztype,smtype,centype)
 
     censusTableFile=plotDir+"census_{}_mh{}-{}.tex".format(ztype,minmh,maxmh)
-    printCensusTable(censusTableFile,cen,sat,field,zbins,smbins)
+#    printCensusTable(censusTableFile,cen,sat,field,zbins,smbins)
 
 
 
